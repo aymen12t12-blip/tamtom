@@ -18,7 +18,8 @@ import {
   User,
   Tag,
   DollarSign,
-  Shield
+  Shield,
+  CreditCard
 } from 'lucide-react';
 import type { UiSettings } from '@shared/schema';
 
@@ -116,6 +117,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       label: 'الكوبونات', 
       path: '/admin/coupons',
       description: 'إدارة كوبونات الخصم'
+    },
+    { 
+      icon: CreditCard, 
+      label: 'طرق الدفع', 
+      path: '/admin/payment-methods',
+      description: 'إدارة طرق الدفع (مدى، STC Pay...)'
     },
     { 
       icon: Users, 

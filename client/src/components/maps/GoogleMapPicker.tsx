@@ -11,8 +11,8 @@ const mapContainerStyle = {
 };
 
 const defaultCenter = {
-  lat: 15.3694,
-  lng: 44.1910, // Sanaa, Yemen
+  lat: 24.7136,
+  lng: 46.6753, // Riyadh, Saudi Arabia
 };
 
 interface LocationData {

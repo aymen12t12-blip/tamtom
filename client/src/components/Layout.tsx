@@ -52,9 +52,9 @@ export default function Layout({ children }: LayoutProps) {
   const { toast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
-  const { getSettingValue, isFeatureEnabled } = useUiSettings();
+  const { getSetting, isFeatureEnabled } = useUiSettings();
 
-  const getS = (key: string, defaultValue: string) => getSettingValue(key) || defaultValue;
+  const getS = (key: string, defaultValue: string) => getSetting(key, defaultValue);
 
   const whatsappLink = getS('support_whatsapp', 'https://wa.me/967777777777');
   const phoneLink = getS('support_phone', 'tel:+967777777777');
