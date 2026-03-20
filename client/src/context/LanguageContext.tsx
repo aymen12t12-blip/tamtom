@@ -35,7 +35,7 @@ const translations = {
     'login': 'دخول',
     'register': 'تسجيل',
     'add_to_cart': 'إضافة للسلة',
-    'currency': 'ر.ي',
+    'currency': 'ر.س',
     'whatsapp': 'واتساب',
     'direct_call': 'اتصال مباشر',
     'how_can_we_help': 'كيف يمكننا مساعدتك؟',
