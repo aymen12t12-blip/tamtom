@@ -119,6 +119,9 @@ export const drivers = pgTable("drivers", {
   completedOrders: integer("completed_orders").default(0).notNull(),
   averageRating: decimal("average_rating", { precision: 3, scale: 2 }).default("0.00"), // متوسط تقييم السائق
   reviewCount: integer("review_count").default(0), // عدد التقييمات
+  allowProfileEdit: boolean("allow_profile_edit").default(true), // السماح للسائق بتعديل ملفه الشخصي
+  notes: text("notes"), // ملاحظات عن السائق
+  joinDate: timestamp("join_date").defaultNow(), // تاريخ الانضمام
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -590,6 +593,9 @@ export const insertDriverSchema = createInsertSchema(drivers).extend({
   vehicleNumber: true,
   currentLocation: true,
   updatedAt: true,
+  allowProfileEdit: true,
+  notes: true,
+  joinDate: true,
 });
 export const selectDriverSchema = createSelectSchema(drivers);
 export type Driver = z.infer<typeof selectDriverSchema>;
