@@ -21,6 +21,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminDeliveryFees from "./pages/admin/AdminDeliveryFees";
 import AdminUiSettings from "./pages/admin/AdminUiSettings";
 import AdminCoupons from "./pages/admin/AdminCoupons";
+import AdminPaymentMethods from "./pages/admin/AdminPaymentMethods";
 import AdminDetailedReports from "./pages/admin/AdminDetailedReports";
 import AdvancedReports from "./pages/admin/AdvancedReports";
 import RestaurantReports from "./pages/admin/RestaurantReports";
@@ -104,6 +105,7 @@ function MainApp() {
           <Route path="/admin/delivery-fees" component={AdminDeliveryFees} />
           <Route path="/admin/ui-settings" component={AdminUiSettings} />
           <Route path="/admin/coupons" component={AdminCoupons} />
+          <Route path="/admin/payment-methods" component={AdminPaymentMethods} />
           <Route path="/admin/detailed-reports" component={AdminDetailedReports} />
           <Route path="/admin/advanced-reports" component={AdvancedReports} />
           <Route path="/admin/restaurant-reports" component={RestaurantReports} />
