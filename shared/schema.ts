@@ -1100,3 +1100,122 @@ export const insertPaymentGatewaySchema = createInsertSchema(paymentGateways).pa
 export const selectPaymentGatewaySchema = createSelectSchema(paymentGateways);
 export type PaymentGateway = z.infer<typeof selectPaymentGatewaySchema>;
 export type InsertPaymentGateway = z.infer<typeof insertPaymentGatewaySchema>;
+
+// Payment Methods table (Saudi payment methods: Mada, STC Pay, Apple Pay, etc.)
+export const paymentMethods = pgTable("payment_methods", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 100 }).notNull(),
+  nameAr: varchar("name_ar", { length: 100 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // card, wallet, cash, bank_transfer
+  provider: varchar("provider", { length: 50 }).notNull(), // mada, stc_pay, apple_pay, visa, mastercard, cash, bank
+  icon: varchar("icon", { length: 200 }),
+  description: text("description"),
+  isActive: boolean("is_active").default(true).notNull(),
+  isOnline: boolean("is_online").default(true).notNull(),
+  requiresDocument: boolean("requires_document").default(false).notNull(),
+  sortOrder: integer("sort_order").default(0),
+  config: text("config"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertPaymentMethodSchema = createInsertSchema(paymentMethods).partial({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  isActive: true,
+  isOnline: true,
+  requiresDocument: true,
+  sortOrder: true,
+});
+export const selectPaymentMethodSchema = createSelectSchema(paymentMethods);
+export type PaymentMethod = z.infer<typeof selectPaymentMethodSchema>;
+export type InsertPaymentMethod = z.infer<typeof insertPaymentMethodSchema>;
+
+// Payment Method Documents table (bank accounts, IBAN, etc.)
+export const paymentMethodDocuments = pgTable("payment_method_documents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  paymentMethodId: uuid("payment_method_id").references(() => paymentMethods.id).notNull(),
+  documentType: varchar("document_type", { length: 100 }).notNull(), // iban, account_number, merchant_id, etc.
+  label: varchar("label", { length: 200 }).notNull(),
+  value: text("value").notNull(),
+  isVisible: boolean("is_visible").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertPaymentMethodDocumentSchema = createInsertSchema(paymentMethodDocuments).partial({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  isVisible: true,
+});
+export const selectPaymentMethodDocumentSchema = createSelectSchema(paymentMethodDocuments);
+export type PaymentMethodDocument = z.infer<typeof selectPaymentMethodDocumentSchema>;
+export type InsertPaymentMethodDocument = z.infer<typeof insertPaymentMethodDocumentSchema>;
+
+// Coupons table
+export const coupons = pgTable("coupons", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  nameAr: varchar("name_ar", { length: 200 }).notNull(),
+  description: text("description"),
+  type: varchar("type", { length: 20 }).notNull().default("percentage"), // percentage, fixed
+  value: decimal("value", { precision: 10, scale: 2 }).notNull(),
+  minOrderValue: decimal("min_order_value", { precision: 10, scale: 2 }).default("0"),
+  maxDiscount: decimal("max_discount", { precision: 10, scale: 2 }),
+  usageLimit: integer("usage_limit"),
+  usageCount: integer("usage_count").default(0).notNull(),
+  perUserLimit: integer("per_user_limit").default(1),
+  applicableFor: varchar("applicable_for", { length: 50 }).default("all"), // all, new_users, specific_restaurant
+  restaurantId: uuid("restaurant_id").references(() => restaurants.id),
+  categoryId: uuid("category_id").references(() => categories.id),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertCouponSchema = createInsertSchema(coupons).partial({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  isActive: true,
+  usageCount: true,
+  description: true,
+  maxDiscount: true,
+  usageLimit: true,
+  perUserLimit: true,
+  applicableFor: true,
+  restaurantId: true,
+  categoryId: true,
+  startDate: true,
+  endDate: true,
+  minOrderValue: true,
+});
+export const selectCouponSchema = createSelectSchema(coupons);
+export type Coupon = z.infer<typeof selectCouponSchema>;
+export type InsertCoupon = z.infer<typeof insertCouponSchema>;
+
+// Coupon usages table (track who used which coupon)
+export const couponUsages = pgTable("coupon_usages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  couponId: uuid("coupon_id").references(() => coupons.id).notNull(),
+  userId: uuid("user_id").references(() => users.id),
+  userPhone: varchar("user_phone", { length: 20 }),
+  orderId: uuid("order_id").references(() => orders.id),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCouponUsageSchema = createInsertSchema(couponUsages).partial({
+  id: true,
+  createdAt: true,
+  userId: true,
+  userPhone: true,
+  orderId: true,
+});
+export const selectCouponUsageSchema = createSelectSchema(couponUsages);
+export type CouponUsage = z.infer<typeof selectCouponUsageSchema>;
+export type InsertCouponUsage = z.infer<typeof insertCouponUsageSchema>;

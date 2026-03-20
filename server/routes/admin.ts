@@ -2004,7 +2004,7 @@ router.delete("/coupons/:id", async (req, res) => {
 router.get("/reports/detailed", async (req, res) => {
   try {
     const filters = {
-      type: req.query.type, // products, drivers, customers, admins
+      type: req.query.type,
       startDate: req.query.startDate,
       endDate: req.query.endDate
     };
@@ -2012,6 +2012,95 @@ router.get("/reports/detailed", async (req, res) => {
     res.json(report);
   } catch (error) {
     console.error("خطأ في جلب التقرير التفصيلي:", error);
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+// Payment Methods Routes
+router.get("/payment-methods", async (req, res) => {
+  try {
+    const methods = await storage.getPaymentMethods();
+    const methodsWithDocs = await Promise.all(methods.map(async (m: any) => {
+      const docs = await storage.getPaymentMethodDocuments(m.id);
+      return { ...m, documents: docs };
+    }));
+    res.json(methodsWithDocs);
+  } catch (error) {
+    console.error("خطأ في جلب طرق الدفع:", error);
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.post("/payment-methods", async (req, res) => {
+  try {
+    const method = await storage.createPaymentMethod(req.body);
+    res.status(201).json(method);
+  } catch (error) {
+    console.error("خطأ في إضافة طريقة الدفع:", error);
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.put("/payment-methods/:id", async (req, res) => {
+  try {
+    const method = await storage.updatePaymentMethod(req.params.id, req.body);
+    if (!method) return res.status(404).json({ error: "طريقة الدفع غير موجودة" });
+    res.json(method);
+  } catch (error) {
+    console.error("خطأ في تحديث طريقة الدفع:", error);
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.delete("/payment-methods/:id", async (req, res) => {
+  try {
+    const success = await storage.deletePaymentMethod(req.params.id);
+    if (!success) return res.status(404).json({ error: "طريقة الدفع غير موجودة" });
+    res.json({ success: true });
+  } catch (error) {
+    console.error("خطأ في حذف طريقة الدفع:", error);
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.get("/payment-methods/:id/documents", async (req, res) => {
+  try {
+    const docs = await storage.getPaymentMethodDocuments(req.params.id);
+    res.json(docs);
+  } catch (error) {
+    console.error("خطأ في جلب وثائق طريقة الدفع:", error);
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.post("/payment-methods/:id/documents", async (req, res) => {
+  try {
+    const doc = await storage.createPaymentMethodDocument({ ...req.body, paymentMethodId: req.params.id });
+    res.status(201).json(doc);
+  } catch (error) {
+    console.error("خطأ في إضافة وثيقة:", error);
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.put("/payment-methods/:id/documents/:docId", async (req, res) => {
+  try {
+    const doc = await storage.updatePaymentMethodDocument(req.params.docId, req.body);
+    if (!doc) return res.status(404).json({ error: "الوثيقة غير موجودة" });
+    res.json(doc);
+  } catch (error) {
+    console.error("خطأ في تحديث الوثيقة:", error);
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.delete("/payment-methods/:id/documents/:docId", async (req, res) => {
+  try {
+    const success = await storage.deletePaymentMethodDocument(req.params.docId);
+    if (!success) return res.status(404).json({ error: "الوثيقة غير موجودة" });
+    res.json({ success: true });
+  } catch (error) {
+    console.error("خطأ في حذف الوثيقة:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });

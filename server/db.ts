@@ -11,6 +11,7 @@ import {
   deliveryFeeSettings, deliveryZones, financialReports,
   geoZones, deliveryRules, deliveryDiscounts,
   messages, auditLogs, paymentGateways,
+  paymentMethods, paymentMethodDocuments, coupons, couponUsages,
   type AdminUser, type InsertAdminUser,
   type Category, type InsertCategory,
   type Restaurant, type InsertRestaurant,
@@ -38,7 +39,11 @@ import {
   type DeliveryDiscount, type InsertDeliveryDiscount,
   type Message, type InsertMessage,
   type AuditLog, type InsertAuditLog,
-  type PaymentGateway, type InsertPaymentGateway
+  type PaymentGateway, type InsertPaymentGateway,
+  type PaymentMethod, type InsertPaymentMethod,
+  type PaymentMethodDocument, type InsertPaymentMethodDocument,
+  type Coupon, type InsertCoupon,
+  type CouponUsage, type InsertCouponUsage
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { eq, and, desc, sql, or, like, asc, inArray } from "drizzle-orm";
@@ -2045,6 +2050,166 @@ async getNotifications(recipientType?: string, recipientId?: string, unread?: bo
   async deletePaymentGateway(id: string): Promise<boolean> {
     const result = await this.db.delete(paymentGateways).where(eq(paymentGateways.id, id));
     return result.rowCount > 0;
+  }
+
+  // Payment Methods (Saudi payment methods)
+  async getPaymentMethods(): Promise<PaymentMethod[]> {
+    return await this.db.select().from(paymentMethods).orderBy(asc(paymentMethods.sortOrder));
+  }
+
+  async getActivePaymentMethods(): Promise<PaymentMethod[]> {
+    return await this.db.select().from(paymentMethods).where(eq(paymentMethods.isActive, true)).orderBy(asc(paymentMethods.sortOrder));
+  }
+
+  async getPaymentMethod(id: string): Promise<PaymentMethod | undefined> {
+    const [method] = await this.db.select().from(paymentMethods).where(eq(paymentMethods.id, id));
+    return method;
+  }
+
+  async createPaymentMethod(method: InsertPaymentMethod): Promise<PaymentMethod> {
+    const [newMethod] = await this.db.insert(paymentMethods).values(method).returning();
+    return newMethod;
+  }
+
+  async updatePaymentMethod(id: string, method: Partial<InsertPaymentMethod>): Promise<PaymentMethod | undefined> {
+    const [updated] = await this.db.update(paymentMethods).set({ ...method, updatedAt: new Date() }).where(eq(paymentMethods.id, id)).returning();
+    return updated;
+  }
+
+  async deletePaymentMethod(id: string): Promise<boolean> {
+    await this.db.delete(paymentMethodDocuments).where(eq(paymentMethodDocuments.paymentMethodId, id));
+    const result = await this.db.delete(paymentMethods).where(eq(paymentMethods.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getPaymentMethodDocuments(paymentMethodId: string): Promise<PaymentMethodDocument[]> {
+    return await this.db.select().from(paymentMethodDocuments).where(eq(paymentMethodDocuments.paymentMethodId, paymentMethodId));
+  }
+
+  async createPaymentMethodDocument(doc: InsertPaymentMethodDocument): Promise<PaymentMethodDocument> {
+    const [newDoc] = await this.db.insert(paymentMethodDocuments).values(doc).returning();
+    return newDoc;
+  }
+
+  async updatePaymentMethodDocument(id: string, doc: Partial<InsertPaymentMethodDocument>): Promise<PaymentMethodDocument | undefined> {
+    const [updated] = await this.db.update(paymentMethodDocuments).set({ ...doc, updatedAt: new Date() }).where(eq(paymentMethodDocuments.id, id)).returning();
+    return updated;
+  }
+
+  async deletePaymentMethodDocument(id: string): Promise<boolean> {
+    const result = await this.db.delete(paymentMethodDocuments).where(eq(paymentMethodDocuments.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Coupons
+  async getCoupons(): Promise<Coupon[]> {
+    return await this.db.select().from(coupons).orderBy(desc(coupons.createdAt));
+  }
+
+  async getCouponByCode(code: string): Promise<Coupon | undefined> {
+    const [coupon] = await this.db.select().from(coupons).where(eq(coupons.code, code.toUpperCase()));
+    return coupon;
+  }
+
+  async createCoupon(couponData: InsertCoupon): Promise<Coupon> {
+    const data = { ...couponData, code: couponData.code.toUpperCase() };
+    const [newCoupon] = await this.db.insert(coupons).values(data).returning();
+    return newCoupon;
+  }
+
+  async updateCoupon(id: string, couponData: Partial<InsertCoupon>): Promise<Coupon | undefined> {
+    const updateData: any = { ...couponData, updatedAt: new Date() };
+    if (updateData.code) updateData.code = updateData.code.toUpperCase();
+    const [updated] = await this.db.update(coupons).set(updateData).where(eq(coupons.id, id)).returning();
+    return updated;
+  }
+
+  async deleteCoupon(id: string): Promise<boolean> {
+    const result = await this.db.delete(coupons).where(eq(coupons.id, id));
+    return result.rowCount > 0;
+  }
+
+  async validateCoupon(code: string, orderValue: number, userId?: string, userPhone?: string): Promise<{ valid: boolean; coupon?: Coupon; discount?: number; message?: string }> {
+    const coupon = await this.getCouponByCode(code);
+    if (!coupon) return { valid: false, message: "الكوبون غير موجود" };
+    if (!coupon.isActive) return { valid: false, message: "الكوبون غير نشط" };
+    
+    const now = new Date();
+    if (coupon.startDate && new Date(coupon.startDate) > now) return { valid: false, message: "الكوبون لم يبدأ بعد" };
+    if (coupon.endDate && new Date(coupon.endDate) < now) return { valid: false, message: "انتهت صلاحية الكوبون" };
+    if (coupon.minOrderValue && orderValue < parseFloat(String(coupon.minOrderValue))) {
+      return { valid: false, message: `الحد الأدنى للطلب ${coupon.minOrderValue} ريال` };
+    }
+    if (coupon.usageLimit && coupon.usageCount >= coupon.usageLimit) {
+      return { valid: false, message: "تم استنفاذ الكوبون" };
+    }
+
+    let discount = 0;
+    if (coupon.type === 'percentage') {
+      discount = (orderValue * parseFloat(String(coupon.value))) / 100;
+      if (coupon.maxDiscount) discount = Math.min(discount, parseFloat(String(coupon.maxDiscount)));
+    } else {
+      discount = parseFloat(String(coupon.value));
+    }
+    discount = Math.min(discount, orderValue);
+
+    return { valid: true, coupon, discount };
+  }
+
+  async useCoupon(couponId: string, data: InsertCouponUsage): Promise<void> {
+    await this.db.insert(couponUsages).values(data);
+    await this.db.update(coupons).set({ usageCount: sql`${coupons.usageCount} + 1` }).where(eq(coupons.id, couponId));
+  }
+
+  // Detailed Reports
+  async getDetailedReport(filters: any): Promise<any> {
+    const { type, startDate, endDate } = filters || {};
+    const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const end = endDate ? new Date(endDate) : new Date();
+
+    const allOrders = await this.db.select().from(orders)
+      .where(and(sql`${orders.createdAt} >= ${start}`, sql`${orders.createdAt} <= ${end}`));
+
+    if (!type || type === 'products') {
+      const items = await this.db.select().from(menuItems);
+      return {
+        products: items.map(item => ({
+          ...item,
+          totalSales: allOrders.filter(o => o.items?.includes(item.id)).length,
+          totalRevenue: allOrders.filter(o => o.items?.includes(item.id)).reduce((sum, o) => sum + parseFloat(String(o.total || 0)), 0)
+        }))
+      };
+    }
+
+    if (type === 'drivers') {
+      const driversData = await this.db.select().from(drivers);
+      return {
+        drivers: driversData.map(d => ({
+          ...d,
+          deliveries: allOrders.filter(o => o.driverId === d.id).length,
+          earnings: allOrders.filter(o => o.driverId === d.id).reduce((sum, o) => sum + parseFloat(String(o.driverEarnings || 0)), 0)
+        }))
+      };
+    }
+
+    if (type === 'customers') {
+      const usersData = await this.db.select().from(users);
+      return {
+        customers: usersData.map(u => ({
+          ...u,
+          orders: allOrders.filter(o => o.customerId === u.id).length,
+          totalSpent: allOrders.filter(o => o.customerId === u.id).reduce((sum, o) => sum + parseFloat(String(o.total || 0)), 0)
+        }))
+      };
+    }
+
+    return {
+      summary: {
+        totalOrders: allOrders.length,
+        totalRevenue: allOrders.reduce((sum, o) => sum + parseFloat(String(o.total || 0)), 0),
+        completedOrders: allOrders.filter(o => o.status === 'delivered').length
+      }
+    };
   }
 }
 
