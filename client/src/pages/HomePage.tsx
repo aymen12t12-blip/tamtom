@@ -17,9 +17,10 @@ export default function HomePage() {
   const [, setLocation] = useLocation();
   const [selectedCategory, setSelectedCategory] = useState('all'); // للفئات
   const [selectedTab, setSelectedTab] = useState('all'); // للتبويبات
-  const { getSettingValue } = useUiSettings();
+  const { getSetting, isFeatureEnabled } = useUiSettings();
 
-  const getS = (key: string, defaultValue: string) => getSettingValue(key) || defaultValue;
+  const getS = (key: string, defaultValue: string) => getSetting(key, defaultValue);
+  const showSection = (key: string) => getSetting(key) !== 'false';
 
   // جلب البيانات
   const { data: restaurants } = useQuery<Restaurant[]>({
@@ -56,12 +57,12 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Timing Banner - Dynamic from settings */}
-      <TimingBanner />
+      {showSection('show_hero_section') && <TimingBanner />}
 
       {/* Main Content */}
       <main className="max-w-md mx-auto px-4 py-6">
         {/* Category Grid - Dynamic from API */}
-        <section id="categories-section" className="mb-6">
+        {showSection('show_categories') && <section id="categories-section" className="mb-6">
           <div className="grid grid-cols-4 gap-3">
             {categories?.slice(0, 3).map((category) => (
               <div key={category.id} className="text-center cursor-pointer" onClick={() => { setSelectedCategory(category.id); setSelectedTab('all'); }}>
@@ -84,10 +85,10 @@ export default function HomePage() {
               <h4 className="text-xs font-medium text-gray-700">{getS('text_all_categories', 'كل التصنيفات')}</h4>
             </div>
           </div>
-        </section>
+        </section>}
 
         {/* Promotional Banners - Exactly like reference image */}
-        <section className="mb-6">
+        {showSection('show_hero_section') && <section className="mb-6">
           <div className="grid grid-cols-2 gap-3">
             {/* Special Offer Banner */}
             <div 

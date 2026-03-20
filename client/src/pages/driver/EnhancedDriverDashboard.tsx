@@ -92,7 +92,7 @@ export default function EnhancedDriverDashboard({ driverId, onLogout }: Enhanced
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { getSettingValue } = useUiSettings();
+  const { getSetting: getSettingValue } = useUiSettings();
 
   const getS = (key: string, defaultValue: string) => getSettingValue(key) || defaultValue;
 
