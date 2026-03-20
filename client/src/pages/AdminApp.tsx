@@ -16,12 +16,12 @@ import AdminDriversAdvanced from "./AdminDriversAdvanced";
 import AdminRestaurantsAdvanced from "./AdminRestaurantsAdvanced";
 import AdminDashboard from "./admin/AdminDashboard";
 import AdminDeliveryFees from "./admin/AdminDeliveryFees";
+import AdminBackup from "./admin/AdminBackup";
 import RatingsManagement from "./RatingsManagement";
 import WalletManagement from "./WalletManagement";
 import NotFound from "./not-found";
 import React from "react";
 
-// Admin App Component
 interface AdminAppProps {
   onLogout: () => void;
 }
@@ -46,6 +46,7 @@ export const AdminApp: React.FC<AdminAppProps> = () => {
       <Route path="/admin/ui-settings" component={AdminUiSettings} />
       <Route path="/admin/ratings" component={RatingsManagement} />
       <Route path="/admin/wallet" component={WalletManagement} />
+      <Route path="/admin/backup" component={AdminBackup} />
       <Route component={NotFound} />
     </Switch>
   );
