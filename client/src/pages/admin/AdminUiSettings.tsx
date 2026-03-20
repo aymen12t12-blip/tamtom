@@ -1,0 +1,355 @@
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Save, Settings, Eye, Image as ImageIcon } from 'lucide-react';
+import ImageUpload from '@/components/ImageUpload';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import type { UiSettings } from '@shared/schema';
+
+interface SettingItem {
+  key: string;
+  label: string;
+  type: 'boolean' | 'text' | 'textarea' | 'image';
+  description: string;
+  category: string;
+}
+
+const settingsConfig: SettingItem[] = [
+  // Branding - Enhanced with secondary logo
+  { key: 'app_name', label: 'اسم التطبيق', type: 'text', description: 'اسم التطبيق الذي يظهر للمستخدمين', category: 'الهوية البصرية' },
+  { key: 'sidebar_image_url', label: 'صورة الشعار الأساسية (خلفية القائمة)', type: 'image', description: 'الصورة الأساسية - تُستخدم كخلفية القائمة + شعار رئيسي', category: 'الهوية البصرية' },
+  { key: 'top_bar_logo_url', label: 'شعار الشريط العلوي (الثانوي)', type: 'image', description: 'الشعار الصغير مقابل زر القائمة في الهاتف', category: 'الهوية البصرية' },
+  { key: 'header_logo_url', label: 'شعار قديم (احتياطي)', type: 'image', description: 'للتوافق القديم فقط', category: 'الهوية البصرية' },
+  { key: 'primary_logo_use_sidebar_bg', label: 'استخدم خلفية القائمة كشعار رئيسي', type: 'boolean', description: 'إزالة الدائرة + استخدام sidebar_image_url كشعار', category: 'الهوية البصرية' },
+  { key: 'app_theme', label: 'لون الموضوع', type: 'text', description: 'اللون الأساسي للتطبيق (hex color)', category: 'الهوية البصرية' },
+
+  // Animations
+  { key: 'logo_animation_duration', label: 'تأخير ظهور الشعار الثانوي (ثواني)', type: 'text', description: 'مثال: 2.5', category: 'الرسوم المتحركة' },
+
+  // Navigation Bars
+  { key: 'bottom_bar_enabled', label: 'إظهار الشريط السفلي (الهاتف)', type: 'boolean', description: 'الشريط السفلي في التطبيق', category: 'التنقل' },
+  { key: 'sidebar_header_style', label: 'تصميم رأس القائمة', type: 'select', options: ['compact', 'full'], description: 'compact: شعار فقط | full: مع معلومات', category: 'القائمة الجانبية' },
+
+  // ... rest unchanged
+
+  // Branding Settings
+  { key: 'app_name', label: 'اسم التطبيق', type: 'text', description: 'اسم التطبيق الذي يظهر للمستخدمين', category: 'الهوية البصرية' },
+  { key: 'header_logo_url', label: 'صورة شعار الهيدر', type: 'image', description: 'يتم عرضه في الشريط العلوي والرأس بدلاً من النص طمطوم', category: 'الهوية البصرية' },
+  { key: 'app_theme', label: 'لون الموضوع', type: 'text', description: 'اللون الأساسي للتطبيق (hex color)', category: 'الهوية البصرية' },
+  { key: 'sidebar_image_url', label: 'صورة خلفية القائمة الجانبية', type: 'image', description: 'صورة الخلفية الكاملة التي تظهر في أعلى القائمة الجانبية', category: 'الهوية البصرية' },
+
+  // Home Page Content
+  { key: 'show_hero_section', label: 'عرض قسم البانر الرئيسي', type: 'boolean', description: 'عرض شريط العروض المتحرك في أعلى الصفحة', category: 'محتوى الصفحة الرئيسية' },
+  { key: 'show_categories', label: 'عرض قسم التصنيفات', type: 'boolean', description: 'عرض شبكة التصنيفات في الصفحة الرئيسية', category: 'محتوى الصفحة الرئيسية' },
+  { key: 'show_featured_products', label: 'عرض قسم وصل حديثاً', type: 'boolean', description: 'عرض المنتجات المميزة في الصفحة الرئيسية', category: 'محتوى الصفحة الرئيسية' },
+  { key: 'show_search_bar', label: 'عرض شريط البحث', type: 'boolean', description: 'عرض شريط البحث في الصفحة الرئيسية', category: 'محتوى الصفحة الرئيسية' },
+
+  // Splash Screen
+  { key: 'splash_image_url', label: 'صورة شاشة الترحيب', type: 'image', description: 'الصورة التي تظهر عند فتح التطبيق لأول مرة', category: 'شاشة الترحيب' },
+  { key: 'splash_title', label: 'عنوان شاشة الترحيب', type: 'text', description: 'العنوان الرئيسي في شاشة السبلاتش', category: 'شاشة الترحيب' },
+  { key: 'splash_subtitle', label: 'وصف شاشة الترحيب', type: 'textarea', description: 'الوصف الذي يظهر أسفل العنوان في شاشة السبلاتش', category: 'شاشة الترحيب' },
+
+  // Navigation Settings
+  { key: 'show_orders_page', label: 'عرض صفحة الطلبات', type: 'boolean', description: 'عرض صفحة الطلبات في التنقل', category: 'التنقل' },
+  { key: 'show_track_orders_page', label: 'عرض صفحة تتبع الطلبات', type: 'boolean', description: 'عرض صفحة تتبع الطلبات في التنقل', category: 'التنقل' },
+  
+  // Support & Contact Settings
+  { key: 'support_whatsapp', label: 'رقم واتساب الدعم', type: 'text', description: 'رقم الهاتف للتواصل عبر واتساب (مثال: 966501234567)', category: 'الدعم والمراسلة' },
+  { key: 'support_phone', label: 'رقم الهاتف للاتصال المباشر', type: 'text', description: 'رقم الهاتف للاتصال المباشر (مثال: +966501234567)', category: 'الدعم والمراسلة' },
+  { key: 'share_text', label: 'نص المشاركة', type: 'textarea', description: 'النص الافتراضي عند مشاركة التطبيق', category: 'الدعم والمراسلة' },
+  { key: 'share_url', label: 'رابط المشاركة', type: 'text', description: 'الرابط الذي سيتم مشاركته للتطبيق (مثال: https://app.example.com)', category: 'الدعم والمراسلة' },
+  
+  // Privacy & Legal
+  { key: 'privacy_policy_text', label: 'نص سياسة الخصوصية', type: 'textarea', description: 'نص سياسة الخصوصية الذي يظهر للمستخدمين', category: 'قانوني' },
+
+  // Client App Buttons
+  { key: 'btn_shop_now', label: 'نص زر "تسوق الآن"', type: 'text', description: 'يظهر في بنرات العروض', category: 'تطبيق العميل - الأزرار' },
+  { key: 'btn_tab_favorites', label: 'تبويب "المفضلة"', type: 'text', description: 'اسم تبويب المطاعم المفضلة', category: 'تطبيق العميل - الأزرار' },
+  { key: 'btn_tab_new', label: 'تبويب "الجديدة"', type: 'text', description: 'اسم تبويب المطاعم الجديدة', category: 'تطبيق العميل - الأزرار' },
+  { key: 'btn_tab_nearest', label: 'تبويب "الأقرب"', type: 'text', description: 'اسم تبويب المطاعم الأقرب', category: 'تطبيق العميل - الأزرار' },
+  { key: 'btn_tab_all', label: 'تبويب "الكل"', type: 'text', description: 'اسم تبويب كل المطاعم', category: 'تطبيق العميل - الأزرار' },
+  { key: 'btn_add_to_cart', label: 'زر "إضافة إلى السلة"', type: 'text', description: 'النص على زر الإضافة للسلة', category: 'تطبيق العميل - الأزرار' },
+  { key: 'btn_change_lang', label: 'زر "تغيير اللغة"', type: 'text', description: 'النص في القائمة الجانبية', category: 'تطبيق العميل - الأزرار' },
+
+  // Client App Main Text
+  { key: 'text_app_name_full', label: 'اسم التطبيق الكامل', type: 'text', description: 'مثل: طمطوم - أفضل تطبيق توصيل طعام', category: 'تطبيق العميل - النصوص' },
+  { key: 'text_all_categories', label: 'عنوان "كل التصنيفات"', type: 'text', description: 'عنوان قسم الفئات', category: 'تطبيق العميل - النصوص' },
+  { key: 'text_delivery_fee_prefix', label: 'نص "رسوم التوصيل"', type: 'text', description: 'البادئة قبل مبلغ الرسوم', category: 'تطبيق العميل - النصوص' },
+  { key: 'text_support_title', label: 'عنوان "نحن معك.."', type: 'text', description: 'عنوان نافذة الدعم الفني', category: 'تطبيق العميل - النصوص' },
+
+  // Driver App Buttons
+  { key: 'driver_btn_accept', label: 'زر "قبول الطلب"', type: 'text', description: 'يظهر عند وجود طلب متاح', category: 'تطبيق السائق - الأزرار' },
+  { key: 'driver_btn_received', label: 'حالة "تم الاستلام"', type: 'text', description: 'زر تحديث الحالة للاستلام', category: 'تطبيق السائق - الأزرار' },
+  { key: 'driver_btn_start_delivery', label: 'حالة "بدء التوصيل"', type: 'text', description: 'زر تحديث الحالة لبدء التوصيل', category: 'تطبيق السائق - الأزرار' },
+  { key: 'driver_btn_delivered', label: 'حالة "تم التسليم"', type: 'text', description: 'زر تحديث الحالة للتسليم', category: 'تطبيق السائق - الأزرار' },
+  { key: 'driver_btn_logout', label: 'زر "تسجيل الخروج"', type: 'text', description: 'زر إنهاء الجلسة', category: 'تطبيق السائق - الأزرار' },
+
+  // Driver App Status Texts
+  { key: 'driver_status_available', label: 'نص "أنت متاح الآن"', type: 'text', description: 'حالة السائق متصل', category: 'تطبيق السائق - النصوص' },
+  { key: 'driver_status_offline', label: 'نص "غير متاح"', type: 'text', description: 'حالة السائق غير متصل', category: 'تطبيق السائق - النصوص' },
+  { key: 'driver_stats_title', label: 'عنوان "إحصائيات اليوم"', type: 'text', description: 'ملخص الأرباح والطلبات', category: 'تطبيق السائق - النصوص' },
+];
+
+export default function AdminUiSettings() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [pendingChanges, setPendingChanges] = useState<Record<string, string>>({});
+
+  const { data: uiSettings, isLoading } = useQuery<UiSettings[]>({
+    queryKey: ['/api/admin/ui-settings'],
+  });
+
+  const updateSettingMutation = useMutation({
+    mutationFn: async ({ key, value }: { key: string; value: string }) => {
+      const response = await apiRequest('PUT', `/api/admin/ui-settings/${key}`, { value });
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/ui-settings'] });
+      // Remove from pending changes
+      setPendingChanges(prev => {
+        const newChanges = { ...prev };
+        delete newChanges[variables.key];
+        return newChanges;
+      });
+      toast({
+        title: "تم حفظ الإعداد",
+        description: "تم تحديث الإعداد بنجاح",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "خطأ",
+        description: "فشل في حفظ الإعداد",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const getCurrentValue = (key: string): string => {
+    // Check pending changes first
+    if (pendingChanges[key] !== undefined) {
+      return pendingChanges[key];
+    }
+    
+    // Then check existing settings
+    const setting = uiSettings?.find(s => s.key === key);
+    return setting?.value || '';
+  };
+
+  const handleSettingChange = (key: string, value: string) => {
+    setPendingChanges(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handleBooleanChange = (key: string, checked: boolean) => {
+    handleSettingChange(key, checked ? 'true' : 'false');
+  };
+
+  const saveSetting = (key: string) => {
+    const value = pendingChanges[key];
+    if (value !== undefined) {
+      updateSettingMutation.mutate({ key, value });
+    }
+  };
+
+  const saveAllChanges = () => {
+    Object.entries(pendingChanges).forEach(([key, value]) => {
+      updateSettingMutation.mutate({ key, value });
+    });
+  };
+
+  const hasChanges = Object.keys(pendingChanges).length > 0;
+
+  const getSettingsByCategory = () => {
+    const categories: Record<string, SettingItem[]> = {};
+    settingsConfig.forEach(setting => {
+      if (!categories[setting.category]) {
+        categories[setting.category] = [];
+      }
+      categories[setting.category].push(setting);
+    });
+    return categories;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Settings className="h-8 w-8 text-primary" />
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">إعدادات الواجهة</h1>
+            <p className="text-muted-foreground">إدارة إعدادات التطبيق والواجهة</p>
+          </div>
+        </div>
+        <div className="grid gap-6">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader>
+                <div className="h-6 bg-muted rounded w-1/4" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[...Array(3)].map((_, j) => (
+                  <div key={j} className="h-16 bg-muted rounded" />
+                ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Settings className="h-8 w-8 text-primary" />
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">إدارة إعدادات المتجر والواجهة</h1>
+            <p className="text-muted-foreground">إدارة إعدادات المتجر والواجهة والمحتوى</p>
+          </div>
+        </div>
+
+        {hasChanges && (
+          <Button
+            onClick={saveAllChanges}
+            disabled={updateSettingMutation.isPending}
+            className="gap-2"
+            data-testid="button-save-all-settings"
+          >
+            <Save className="h-4 w-4" />
+            حفظ جميع التغييرات ({Object.keys(pendingChanges).length})
+          </Button>
+        )}
+      </div>
+
+      {/* Settings by Category */}
+      <div className="grid gap-6">
+        {Object.entries(getSettingsByCategory()).map(([category, settings]) => (
+          <Card key={category}>
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold">{category}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {settings.map((setting, index) => {
+                const currentValue = getCurrentValue(setting.key);
+                const hasChange = pendingChanges[setting.key] !== undefined;
+
+                return (
+                  <div key={setting.key}>
+                    {index > 0 && <Separator className="mb-4" />}
+                    
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor={setting.key} className="font-medium">
+                            {setting.label}
+                          </Label>
+                          {hasChange && (
+                            <div className="h-2 w-2 bg-primary rounded-full" />
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {setting.description}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        {setting.type === 'boolean' ? (
+                          <Switch
+                            id={setting.key}
+                            checked={currentValue === 'true'}
+                            onCheckedChange={(checked) => handleBooleanChange(setting.key, checked)}
+                            data-testid={`switch-${setting.key}`}
+                          />
+                        ) : setting.type === 'image' ? (
+                          <div className="flex flex-col gap-2 w-80">
+                            <ImageUpload
+                              label={setting.label}
+                              value={currentValue}
+                              onChange={(url) => handleSettingChange(setting.key, url)}
+                              bucket="ui-settings"
+                            />
+                          </div>
+                        ) : setting.type === 'textarea' ? (
+                          <Textarea
+                            id={setting.key}
+                            value={currentValue}
+                            onChange={(e) => handleSettingChange(setting.key, e.target.value)}
+                            className="w-80 min-h-[100px]"
+                            placeholder={`ادخل ${setting.label}`}
+                          />
+                        ) : (
+                          <Input
+                            id={setting.key}
+                            value={currentValue}
+                            onChange={(e) => handleSettingChange(setting.key, e.target.value)}
+                            className="w-48"
+                            placeholder={`ادخل ${setting.label}`}
+                            data-testid={`input-${setting.key}`}
+                          />
+                        )}
+
+                        {hasChange && (
+                          <Button
+                            size="sm"
+                            onClick={() => saveSetting(setting.key)}
+                            disabled={updateSettingMutation.isPending}
+                            data-testid={`button-save-${setting.key}`}
+                          >
+                            <Save className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Preview Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Eye className="h-5 w-5" />
+            معاينة الإعدادات
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <h4 className="font-medium mb-2">إعدادات الهوية البصرية</h4>
+              <ul className="space-y-1 text-muted-foreground">
+                <li>اسم التطبيق: {getCurrentValue('app_name') || 'طمطوم'}</li>
+                <li>الشعار: {getCurrentValue('header_logo_url') ? '✓ مرفوع' : '✗ غير محدد'}</li>
+                <li>صورة القائمة الجانبية: {getCurrentValue('sidebar_image_url') ? '✓ مرفوعة' : '✗ غير محددة'}</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-medium mb-2">إعدادات الدعم والتواصل</h4>
+              <ul className="space-y-1 text-muted-foreground">
+                <li>واتساب: {getCurrentValue('support_whatsapp') ? '✓ محدد' : '✗ غير محدد'}</li>
+                <li>الهاتف: {getCurrentValue('support_phone') ? '✓ محدد' : '✗ غير محدد'}</li>
+                <li>المشاركة: {getCurrentValue('share_url') ? '✓ محددة' : '✗ غير محددة'}</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
