@@ -2105,4 +2105,104 @@ router.delete("/payment-methods/:id/documents/:docId", async (req, res) => {
   }
 });
 
+
+router.post("/orders/reset-numbers", async (req, res) => {
+  try {
+    const allOrders = await storage.getOrders();
+    const sorted = [...allOrders].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    const prefix = req.body.prefix || '';
+    for (let i = 0; i < sorted.length; i++) {
+      const newNumber = `${prefix}${String(i + 1).padStart(4, '0')}`;
+      await db.update(orders)
+        .set({ orderNumber: newNumber })
+        .where(eq(orders.id, sorted[i].id));
+    }
+    res.json({ success: true, message: `تم إعادة تسلسل ${sorted.length} طلب بنجاح` });
+  } catch (error) {
+    console.error("خطأ في إعادة تسلسل أرقام الطلبات:", error);
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.get("/backup", async (req, res) => {
+  try {
+    const [
+      allOrders, allDrivers, allRestaurants, allCategories,
+      allMenuItems, allSpecialOffers, allUsers
+    ] = await Promise.all([
+      storage.getOrders(),
+      storage.getDrivers(),
+      storage.getRestaurants(),
+      storage.getCategories(),
+      storage.getAllMenuItems(),
+      storage.getSpecialOffers(),
+      storage.getUsers ? storage.getUsers() : [],
+    ]);
+
+    const backup = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      data: {
+        orders: allOrders,
+        drivers: allDrivers,
+        restaurants: allRestaurants,
+        categories: allCategories,
+        menuItems: allMenuItems,
+        specialOffers: allSpecialOffers,
+        users: allUsers,
+      },
+      counts: {
+        orders: allOrders.length,
+        drivers: allDrivers.length,
+        restaurants: allRestaurants.length,
+        categories: allCategories.length,
+        menuItems: allMenuItems.length,
+        specialOffers: allSpecialOffers.length,
+        users: allUsers.length,
+      }
+    };
+
+    const filename = `tamtom-backup-${new Date().toISOString().split('T')[0]}.json`;
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.json(backup);
+  } catch (error) {
+    console.error("خطأ في إنشاء النسخة الاحتياطية:", error);
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.get("/backup/stats", async (req, res) => {
+  try {
+    const [
+      allOrders, allDrivers, allRestaurants, allCategories,
+      allMenuItems, allSpecialOffers
+    ] = await Promise.all([
+      storage.getOrders(),
+      storage.getDrivers(),
+      storage.getRestaurants(),
+      storage.getCategories(),
+      storage.getAllMenuItems(),
+      storage.getSpecialOffers(),
+    ]);
+
+    res.json({
+      counts: {
+        orders: allOrders.length,
+        drivers: allDrivers.length,
+        restaurants: allRestaurants.length,
+        categories: allCategories.length,
+        menuItems: allMenuItems.length,
+        specialOffers: allSpecialOffers.length,
+      },
+      lastBackup: null,
+    });
+  } catch (error) {
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
 export { router as adminRoutes };
+

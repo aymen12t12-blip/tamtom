@@ -120,6 +120,9 @@ export const drivers = pgTable("drivers", {
   averageRating: decimal("average_rating", { precision: 3, scale: 2 }).default("0.00"), // متوسط تقييم السائق
   reviewCount: integer("review_count").default(0), // عدد التقييمات
   allowProfileEdit: boolean("allow_profile_edit").default(true), // السماح للسائق بتعديل ملفه الشخصي
+  canViewWallet: boolean("can_view_wallet").default(true), // السماح برؤية المحفظة
+  canViewStats: boolean("can_view_stats").default(true), // السماح برؤية الإحصائيات
+  canToggleAvailability: boolean("can_toggle_availability").default(true), // السماح بتغيير حالة التوفر
   notes: text("notes"), // ملاحظات عن السائق
   joinDate: timestamp("join_date").defaultNow(), // تاريخ الانضمام
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -189,7 +192,9 @@ export const adminUsers = pgTable("admin_users", {
   username: varchar("username", { length: 50 }).unique(),
   email: varchar("email", { length: 100 }).notNull().unique(),
   phone: varchar("phone", { length: 20 }),
-  userType: varchar("user_type", { length: 50 }).default("admin").notNull(),
+  password: text("password"), // كلمة مرور مشفرة (bcrypt)
+  userType: varchar("user_type", { length: 50 }).default("admin").notNull(), // admin | sub_admin
+  permissions: text("permissions"), // JSON: قائمة الصلاحيات للمدير المساعد
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
