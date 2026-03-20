@@ -30,7 +30,7 @@ export default function RestaurantReports() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {reports?.reduce((sum: number, r: any) => sum + r.totalSales, 0).toLocaleString()} ر.ي
+              {reports?.reduce((sum: number, r: any) => sum + r.totalSales, 0).toLocaleString()} ر.س
             </div>
           </CardContent>
         </Card>
@@ -68,10 +68,10 @@ export default function RestaurantReports() {
                 <TableRow key={report.id}>
                   <TableCell className="font-medium">{report.name}</TableCell>
                   <TableCell>{report.totalOrders}</TableCell>
-                  <TableCell>{report.totalSales.toLocaleString()} ر.ي</TableCell>
-                  <TableCell>{report.avgOrderValue.toFixed(2)} ر.ي</TableCell>
+                  <TableCell>{report.totalSales.toLocaleString()} ر.س</TableCell>
+                  <TableCell>{report.avgOrderValue.toFixed(2)} ر.س</TableCell>
                   <TableCell>{report.commissionRate}%</TableCell>
-                  <TableCell className="text-green-600 font-bold">{report.amountDue.toLocaleString()} ر.ي</TableCell>
+                  <TableCell className="text-green-600 font-bold">{report.amountDue.toLocaleString()} ر.س</TableCell>
                 </TableRow>
               ))}
             </TableBody>

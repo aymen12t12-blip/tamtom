@@ -364,9 +364,9 @@ export default function AdminHRManagement() {
                     return (
                       <TableRow key={record.id}>
                         <TableCell className="font-medium">{employee?.name || 'موظف سابق'}</TableCell>
-                        <TableCell>{new Date(record.date).toLocaleDateString('ar-YE')}</TableCell>
-                        <TableCell>{record.checkIn ? new Date(record.checkIn).toLocaleTimeString('ar-YE') : '-'}</TableCell>
-                        <TableCell>{record.checkOut ? new Date(record.checkOut).toLocaleTimeString('ar-YE') : '-'}</TableCell>
+                        <TableCell>{new Date(record.date).toLocaleDateString('ar-SA')}</TableCell>
+                        <TableCell>{record.checkIn ? new Date(record.checkIn).toLocaleTimeString('ar-SA') : '-'}</TableCell>
+                        <TableCell>{record.checkOut ? new Date(record.checkOut).toLocaleTimeString('ar-SA') : '-'}</TableCell>
                         <TableCell>
                           <Badge variant={record.status === 'present' ? 'default' : 'destructive'}>
                             {record.status === 'present' ? 'حاضر' : record.status === 'absent' ? 'غائب' : 'متأخر'}
@@ -416,8 +416,8 @@ export default function AdminHRManagement() {
                         <TableCell>
                           {request.type === 'annual' ? 'سنوية' : request.type === 'sick' ? 'مرضية' : 'طارئة'}
                         </TableCell>
-                        <TableCell>{new Date(request.startDate).toLocaleDateString('ar-YE')}</TableCell>
-                        <TableCell>{new Date(request.endDate).toLocaleDateString('ar-YE')}</TableCell>
+                        <TableCell>{new Date(request.startDate).toLocaleDateString('ar-SA')}</TableCell>
+                        <TableCell>{new Date(request.endDate).toLocaleDateString('ar-SA')}</TableCell>
                         <TableCell className="max-w-[200px] truncate">{request.reason}</TableCell>
                         <TableCell>
                           <Badge variant={request.status === 'approved' ? 'default' : request.status === 'pending' ? 'outline' : 'destructive'}>

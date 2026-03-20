@@ -309,7 +309,7 @@ export default function OrderTracking() {
                         {step.message}
                       </p>
                       <p className="text-sm text-muted-foreground" data-testid={`timeline-time-${index}`}>
-                        {new Date(step.createdAt || step.timestamp).toLocaleTimeString('ar-YE', { 
+                        {new Date(step.createdAt || step.timestamp).toLocaleTimeString('ar-SA', { 
                           hour: '2-digit', 
                           minute: '2-digit' 
                         })}

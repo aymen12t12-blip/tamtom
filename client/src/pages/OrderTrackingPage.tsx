@@ -347,7 +347,7 @@ export default function OrderTrackingPage() {
                       {status.description || status.message || 'تحديث الطلب'}
                     </p>
                     <p className="text-sm text-muted-foreground" data-testid={`timeline-time-${index}`}>
-                      {new Date(status.timestamp).toLocaleTimeString('ar-YE', { 
+                      {new Date(status.timestamp).toLocaleTimeString('ar-SA', { 
                         hour: '2-digit', 
                         minute: '2-digit' 
                       })}

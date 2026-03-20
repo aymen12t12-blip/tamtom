@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Trash2, Tag, Save, X, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Tag, Save, X, Image as ImageIcon, Search } from 'lucide-react';
 import ImageUpload from '@/components/ImageUpload';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +18,7 @@ export default function AdminCategories() {
   const queryClient = useQueryClient();
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   
   const [formData, setFormData] = useState({
     name: '',
@@ -251,6 +252,20 @@ export default function AdminCategories() {
         </Dialog>
       </div>
 
+      {/* Search Bar */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur pb-2 pt-1">
+        <div className="relative">
+          <Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="البحث في الأقسام..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pr-10"
+            data-testid="input-search-categories"
+          />
+        </div>
+      </div>
+
       {/* Categories Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isLoading ? (
@@ -263,8 +278,8 @@ export default function AdminCategories() {
               </CardContent>
             </Card>
           ))
-        ) : categories?.length ? (
-          categories.map((category) => (
+        ) : categories?.filter(c => !searchTerm || c.name.toLowerCase().includes(searchTerm.toLowerCase())).length ? (
+          categories.filter(c => !searchTerm || c.name.toLowerCase().includes(searchTerm.toLowerCase())).map((category) => (
             <Card key={category.id} className="hover:shadow-md transition-shadow overflow-hidden">
               <div className="h-32 bg-muted relative">
                 {category.image ? (

@@ -41,11 +41,18 @@ export default function AdminDrivers() {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    email: '',
     password: '',
     currentLocation: '',
     isAvailable: true,
     isActive: true,
-    commissionRate: 70, // نسبة العمولة الافتراضية 70%
+    commissionRate: 70,
+    paymentMode: 'commission' as 'commission' | 'salary',
+    salaryAmount: 0,
+    vehicleType: '',
+    vehicleNumber: '',
+    allowProfileEdit: true,
+    notes: '',
   });
 
   const [transactionData, setTransactionData] = useState({
@@ -238,11 +245,18 @@ export default function AdminDrivers() {
     setFormData({
       name: '',
       phone: '',
+      email: '',
       password: '',
       currentLocation: '',
       isAvailable: true,
       isActive: true,
       commissionRate: 70,
+      paymentMode: 'commission',
+      salaryAmount: 0,
+      vehicleType: '',
+      vehicleNumber: '',
+      allowProfileEdit: true,
+      notes: '',
     });
     setEditingDriver(null);
   };
@@ -261,11 +275,18 @@ export default function AdminDrivers() {
     setFormData({
       name: driver.name,
       phone: driver.phone,
-      password: '', // Don't show password
+      email: (driver as any).email || '',
+      password: '',
       currentLocation: driver.currentLocation || '',
       isAvailable: driver.isAvailable,
       isActive: driver.isActive,
       commissionRate: driver.commissionRate || 70,
+      paymentMode: (driver as any).paymentMode || 'commission',
+      salaryAmount: parseFloat((driver as any).salaryAmount || '0'),
+      vehicleType: driver.vehicleType || '',
+      vehicleNumber: driver.vehicleNumber || '',
+      allowProfileEdit: (driver as any).allowProfileEdit !== false,
+      notes: (driver as any).notes || '',
     });
     setIsDialogOpen(true);
   };
@@ -513,9 +534,20 @@ export default function AdminDrivers() {
                       id="phone"
                       value={formData.phone}
                       onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                      placeholder="+967-771234567"
+                      placeholder="+966-5xxxxxxxx"
                       required
                       data-testid="input-driver-phone"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="email">البريد الإلكتروني (اختياري)</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder="driver@example.com"
                     />
                   </div>
 
@@ -535,6 +567,82 @@ export default function AdminDrivers() {
                   </div>
 
                   <div>
+                    <Label htmlFor="paymentMode">نظام الدفع</Label>
+                    <Select
+                      value={formData.paymentMode}
+                      onValueChange={(value: 'commission' | 'salary') => setFormData(prev => ({ ...prev, paymentMode: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر نظام الدفع" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="commission">عمولة (نسبة من كل طلب)</SelectItem>
+                        <SelectItem value="salary">راتب شهري ثابت</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {formData.paymentMode === 'commission' ? (
+                    <div>
+                      <Label htmlFor="commissionRate">نسبة العمولة (%)</Label>
+                      <Input
+                        id="commissionRate"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={formData.commissionRate}
+                        onChange={(e) => setFormData(prev => ({ ...prev, commissionRate: parseInt(e.target.value) || 70 }))}
+                        placeholder="نسبة العمولة من كل طلب"
+                        required
+                        data-testid="input-driver-commission"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        النسبة المئوية التي يحصل عليها السائق من رسوم التوصيل
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <Label htmlFor="salaryAmount">الراتب الشهري (ريال سعودي)</Label>
+                      <Input
+                        id="salaryAmount"
+                        type="number"
+                        min="0"
+                        value={formData.salaryAmount}
+                        onChange={(e) => setFormData(prev => ({ ...prev, salaryAmount: parseFloat(e.target.value) || 0 }))}
+                        placeholder="مبلغ الراتب الشهري"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <Label htmlFor="vehicleType">نوع المركبة</Label>
+                    <Select
+                      value={formData.vehicleType}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, vehicleType: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر نوع المركبة" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="motorcycle">دراجة نارية</SelectItem>
+                        <SelectItem value="car">سيارة</SelectItem>
+                        <SelectItem value="van">فان</SelectItem>
+                        <SelectItem value="truck">شاحنة صغيرة</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="vehicleNumber">رقم لوحة المركبة</Label>
+                    <Input
+                      id="vehicleNumber"
+                      value={formData.vehicleNumber}
+                      onChange={(e) => setFormData(prev => ({ ...prev, vehicleNumber: e.target.value }))}
+                      placeholder="رقم اللوحة"
+                    />
+                  </div>
+
+                  <div>
                     <Label htmlFor="location">الموقع الحالي</Label>
                     <Input
                       id="location"
@@ -546,24 +654,17 @@ export default function AdminDrivers() {
                   </div>
 
                   <div>
-                    <Label htmlFor="commissionRate">نسبة العمولة (%)</Label>
+                    <Label htmlFor="notes">ملاحظات</Label>
                     <Input
-                      id="commissionRate"
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={formData.commissionRate}
-                      onChange={(e) => setFormData(prev => ({ ...prev, commissionRate: parseInt(e.target.value) || 70 }))}
-                      placeholder="نسبة العمولة من كل طلب"
-                      required
-                      data-testid="input-driver-commission"
+                      id="notes"
+                      value={formData.notes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                      placeholder="ملاحظات إضافية عن السائق"
                     />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      النسبة المئوية التي يحصل عليها السائق من كل طلب
-                    </p>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
+                    <p className="text-sm font-medium">الصلاحيات والحالة</p>
                     <div className="flex items-center justify-between">
                       <Label htmlFor="available">متاح للعمل</Label>
                       <Switch
@@ -575,12 +676,24 @@ export default function AdminDrivers() {
                     </div>
                     
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="active">نشط</Label>
+                      <Label htmlFor="active">حساب نشط</Label>
                       <Switch
                         id="active"
                         checked={formData.isActive}
                         onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked }))}
                         data-testid="switch-driver-active"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="allowProfileEdit">السماح بتعديل الملف الشخصي</Label>
+                        <p className="text-xs text-muted-foreground">يسمح للسائق بتعديل بياناته من تطبيقه</p>
+                      </div>
+                      <Switch
+                        id="allowProfileEdit"
+                        checked={formData.allowProfileEdit}
+                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, allowProfileEdit: checked }))}
                       />
                     </div>
                   </div>
@@ -829,12 +942,186 @@ export default function AdminDrivers() {
             </DialogHeader>
             
             <div ref={accountDialogRef} className="flex-1 overflow-y-auto">
-              <Tabs defaultValue="balance" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 sticky top-0 bg-background z-10">
-                  <TabsTrigger value="balance">الرصيد والعمولات</TabsTrigger>
+              <Tabs defaultValue="info" className="w-full">
+                <TabsList className="grid w-full grid-cols-4 sticky top-0 bg-background z-10">
+                  <TabsTrigger value="info">بيانات السائق</TabsTrigger>
+                  <TabsTrigger value="balance">المحفظة والمالية</TabsTrigger>
                   <TabsTrigger value="transactions">سجل المعاملات</TabsTrigger>
                   <TabsTrigger value="commissions">عمولات الطلبات</TabsTrigger>
                 </TabsList>
+
+                {/* Driver Info Tab */}
+                <TabsContent value="info" className="space-y-4 p-4">
+                  {/* Driver Summary Card */}
+                  <Card className="bg-gradient-to-r from-primary to-primary/80 text-white border-none">
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                          <User className="h-8 w-8 text-white" />
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-bold">{selectedDriver?.name}</h2>
+                          <p className="text-white/80">{selectedDriver?.phone}</p>
+                          <div className="flex gap-2 mt-2">
+                            <Badge className={`${selectedDriver?.isActive ? 'bg-green-400' : 'bg-red-400'} text-white border-none text-xs`}>
+                              {selectedDriver?.isActive ? 'نشط' : 'غير نشط'}
+                            </Badge>
+                            <Badge className={`${selectedDriver?.isAvailable ? 'bg-blue-400' : 'bg-gray-400'} text-white border-none text-xs`}>
+                              {selectedDriver?.isAvailable ? 'متاح' : 'غير متاح'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Work Agreement */}
+                    <Card className="border-2 border-primary/20">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Receipt className="h-5 w-5 text-primary" />
+                          اتفاقية العمل
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                          <span className="text-sm text-muted-foreground">نظام الدفع</span>
+                          <Badge variant={(selectedDriver as any)?.paymentMode === 'salary' ? 'secondary' : 'default'}>
+                            {(selectedDriver as any)?.paymentMode === 'salary' ? 'راتب شهري' : 'عمولة'}
+                          </Badge>
+                        </div>
+                        {(selectedDriver as any)?.paymentMode === 'salary' ? (
+                          <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                            <span className="text-sm text-muted-foreground">الراتب الشهري</span>
+                            <span className="font-bold text-green-600">{formatCurrency((selectedDriver as any)?.salaryAmount || 0)}</span>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                            <span className="text-sm text-muted-foreground">نسبة العمولة</span>
+                            <span className="font-bold text-primary">{selectedDriver?.commissionRate || 70}%</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                          <span className="text-sm text-muted-foreground">تاريخ الانضمام</span>
+                          <span className="text-sm font-medium">{selectedDriver?.createdAt ? formatDate(selectedDriver.createdAt) : '-'}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                          <span className="text-sm text-muted-foreground">الطلبات المكتملة</span>
+                          <span className="font-bold">{selectedDriver?.completedOrders || 0}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Vehicle Info */}
+                    <Card className="border-2 border-blue-100">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Truck className="h-5 w-5 text-blue-500" />
+                          معلومات المركبة
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                          <span className="text-sm text-muted-foreground">نوع المركبة</span>
+                          <span className="font-medium">{
+                            selectedDriver?.vehicleType === 'motorcycle' ? 'دراجة نارية' :
+                            selectedDriver?.vehicleType === 'car' ? 'سيارة' :
+                            selectedDriver?.vehicleType === 'van' ? 'فان' :
+                            selectedDriver?.vehicleType === 'truck' ? 'شاحنة صغيرة' :
+                            selectedDriver?.vehicleType || '-'
+                          }</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                          <span className="text-sm text-muted-foreground">رقم اللوحة</span>
+                          <span className="font-medium">{selectedDriver?.vehicleNumber || '-'}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                          <span className="text-sm text-muted-foreground">الموقع الحالي</span>
+                          <span className="font-medium text-sm">{selectedDriver?.currentLocation || '-'}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                          <span className="text-sm text-muted-foreground">التقييم</span>
+                          <span className="font-bold text-amber-500">⭐ {parseFloat(selectedDriver?.averageRating || '0').toFixed(1)} ({selectedDriver?.reviewCount || 0})</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Permissions Control */}
+                  <Card className="border-2 border-orange-100">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Award className="h-5 w-5 text-orange-500" />
+                        صلاحيات السائق
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div>
+                          <p className="font-medium text-sm">السماح بتعديل الملف الشخصي</p>
+                          <p className="text-xs text-muted-foreground">يسمح للسائق بتغيير بياناته من تطبيقه</p>
+                        </div>
+                        <Switch
+                          checked={(selectedDriver as any)?.allowProfileEdit !== false}
+                          onCheckedChange={(checked) => {
+                            updateDriverMutation.mutate({
+                              id: selectedDriver!.id,
+                              data: { allowProfileEdit: checked } as any
+                            });
+                            setSelectedDriver(prev => prev ? { ...prev, allowProfileEdit: checked } as any : prev);
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div>
+                          <p className="font-medium text-sm">متاح لاستقبال الطلبات</p>
+                          <p className="text-xs text-muted-foreground">يظهر للنظام كسائق متاح</p>
+                        </div>
+                        <Switch
+                          checked={selectedDriver?.isAvailable}
+                          onCheckedChange={(checked) => {
+                            toggleDriverStatus(selectedDriver!, 'isAvailable');
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div>
+                          <p className="font-medium text-sm">الحساب نشط</p>
+                          <p className="text-xs text-muted-foreground">تفعيل أو تعطيل حساب السائق</p>
+                        </div>
+                        <Switch
+                          checked={selectedDriver?.isActive}
+                          onCheckedChange={(checked) => {
+                            toggleDriverStatus(selectedDriver!, 'isActive');
+                          }}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Quick Edit Button */}
+                  <div className="flex gap-3">
+                    <Button
+                      className="flex-1 gap-2"
+                      onClick={() => {
+                        setIsAccountDialogOpen(false);
+                        handleEdit(selectedDriver!);
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                      تعديل البيانات الكاملة
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => window.open(`tel:${selectedDriver?.phone}`)}
+                    >
+                      <Phone className="h-4 w-4" />
+                      اتصال
+                    </Button>
+                  </div>
+                </TabsContent>
                 
                 {/* Balance Tab */}
                 <TabsContent value="balance" className="space-y-6 p-4">

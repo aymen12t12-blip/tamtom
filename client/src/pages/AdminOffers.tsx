@@ -518,7 +518,7 @@ export default function AdminOffers() {
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <span className="text-xs">
-                        {new Date(offer.validUntil).toLocaleDateString('ar-YE')}
+                        {new Date(offer.validUntil).toLocaleDateString('ar-SA')}
                       </span>
                     </div>
                   )}
