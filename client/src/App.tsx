@@ -62,6 +62,7 @@ function MainApp() {
   });
 
   const { isAuthenticated } = useAuth();
+  const { loading: settingsLoading } = useUiSettings();
 
   // Handle splash finish
   const handleSplashFinish = () => {
@@ -76,6 +77,18 @@ function MainApp() {
 
   const isAdminRoute = currentLocation.startsWith('/admin');
   const isDriverRoute = currentLocation.startsWith('/driver');
+
+  // انتظار تحميل إعدادات الواجهة للتطبيقات (ليس الأدمن أو صفحات الدخول)
+  if (settingsLoading && !isAdminRoute && !isAuthPage) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50" dir="rtl">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (showSplash && !isAdminRoute && !isDriverRoute && !isAuthPage) {
     return <SplashScreen onFinish={handleSplashFinish} />;
@@ -95,8 +108,13 @@ function MainApp() {
     return <DriverLoginPage />;
   }
 
-  // Handle admin routes
+  // Handle admin routes - require authentication
   if (currentLocation.startsWith('/admin')) {
+    const adminToken = localStorage.getItem('admin_token');
+    if (!adminToken) {
+      setLocation('/admin-login');
+      return null;
+    }
     return (
       <AdminLayout>
         <Switch>
