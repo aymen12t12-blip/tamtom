@@ -2204,5 +2204,97 @@ router.get("/backup/stats", async (req, res) => {
   }
 });
 
+// Admin Profile Routes
+router.get("/profile", async (req, res) => {
+  try {
+    const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.userType, 'admin')).limit(1);
+    if (!admin) return res.status(404).json({ error: "لم يتم العثور على ملف المدير" });
+    const { password: _, ...safeAdmin } = admin as any;
+    res.json(safeAdmin);
+  } catch (error) {
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.put("/profile", async (req, res) => {
+  try {
+    const { name, email, username, phone } = req.body;
+    const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.userType, 'admin')).limit(1);
+    if (!admin) return res.status(404).json({ error: "لم يتم العثور على ملف المدير" });
+    const [updated] = await db.update(adminUsers).set({ name, email, username, phone }).where(eq(adminUsers.id, admin.id)).returning();
+    const { password: _, ...safeAdmin } = updated as any;
+    res.json(safeAdmin);
+  } catch (error) {
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.put("/change-password", async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.userType, 'admin')).limit(1);
+    if (!admin) return res.status(404).json({ error: "لم يتم العثور على المدير" });
+    const adminAny = admin as any;
+    if (adminAny.password && adminAny.password !== currentPassword) {
+      return res.status(400).json({ error: "كلمة المرور الحالية غير صحيحة" });
+    }
+    await db.update(adminUsers).set({ password: newPassword } as any).where(eq(adminUsers.id, admin.id));
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+// Sub-admins Management
+router.get("/sub-admins", async (req, res) => {
+  try {
+    const subAdmins = await db.select().from(adminUsers).where(eq(adminUsers.userType, 'sub_admin'));
+    const safe = subAdmins.map((u: any) => { const { password: _, ...rest } = u; return rest; });
+    res.json(safe);
+  } catch (error) {
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.post("/sub-admins", async (req, res) => {
+  try {
+    const { name, email, username, phone, password, permissions } = req.body;
+    const [newSubAdmin] = await db.insert(adminUsers).values({
+      name, email, username, phone, password,
+      userType: 'sub_admin',
+      permissions: typeof permissions === 'string' ? permissions : JSON.stringify(permissions || []),
+      isActive: true,
+    } as any).returning();
+    const { password: _, ...safe } = newSubAdmin as any;
+    res.status(201).json(safe);
+  } catch (error) {
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.put("/sub-admins/:id", async (req, res) => {
+  try {
+    const { name, email, username, phone, password, permissions, isActive } = req.body;
+    const updateData: any = { name, email, username, phone, isActive };
+    if (password) updateData.password = password;
+    if (permissions !== undefined) updateData.permissions = typeof permissions === 'string' ? permissions : JSON.stringify(permissions);
+    const [updated] = await db.update(adminUsers).set(updateData).where(eq(adminUsers.id, req.params.id)).returning();
+    if (!updated) return res.status(404).json({ error: "المشرف غير موجود" });
+    const { password: _, ...safe } = updated as any;
+    res.json(safe);
+  } catch (error) {
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.delete("/sub-admins/:id", async (req, res) => {
+  try {
+    await db.delete(adminUsers).where(eq(adminUsers.id, req.params.id));
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
 export { router as adminRoutes };
 

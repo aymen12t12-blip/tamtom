@@ -2170,45 +2170,92 @@ async getNotifications(recipientType?: string, recipientId?: string, unread?: bo
     const allOrders = await this.db.select().from(orders)
       .where(and(sql`${orders.createdAt} >= ${start}`, sql`${orders.createdAt} <= ${end}`));
 
+    const statusLabel: Record<string, string> = {
+      pending: 'قيد الانتظار',
+      confirmed: 'مؤكد',
+      preparing: 'قيد التحضير',
+      ready: 'جاهز',
+      picked_up: 'تم الاستلام',
+      on_the_way: 'في الطريق',
+      delivered: 'تم التوصيل',
+      cancelled: 'ملغى',
+    };
+    const statusColor: Record<string, string> = {
+      pending: 'bg-yellow-100 text-yellow-700',
+      confirmed: 'bg-blue-100 text-blue-700',
+      preparing: 'bg-orange-100 text-orange-700',
+      ready: 'bg-purple-100 text-purple-700',
+      picked_up: 'bg-indigo-100 text-indigo-700',
+      on_the_way: 'bg-cyan-100 text-cyan-700',
+      delivered: 'bg-green-100 text-green-700',
+      cancelled: 'bg-red-100 text-red-700',
+    };
+
+    if (type === 'orders') {
+      const total = allOrders.reduce((s, o) => s + parseFloat(String(o.total || 0)), 0);
+      const delivered = allOrders.filter(o => o.status === 'delivered').length;
+      const cancelled = allOrders.filter(o => o.status === 'cancelled').length;
+      const avgOrder = allOrders.length > 0 ? (total / allOrders.length).toFixed(2) : '0';
+      const summary = [
+        { name: 'إجمالي الطلبات', details: `من ${start.toLocaleDateString('ar')} إلى ${end.toLocaleDateString('ar')}`, value: `${allOrders.length} طلب`, status: 'إجمالي', statusColor: 'bg-blue-100 text-blue-700' },
+        { name: 'إجمالي الإيرادات', details: 'مجموع قيم جميع الطلبات', value: `${total.toFixed(2)} ر.س`, status: 'إيرادات', statusColor: 'bg-green-100 text-green-700' },
+        { name: 'طلبات مكتملة', details: 'الطلبات التي تم توصيلها بنجاح', value: `${delivered} طلب`, status: 'مكتمل', statusColor: 'bg-green-100 text-green-700' },
+        { name: 'طلبات ملغاة', details: 'الطلبات التي تم إلغاؤها', value: `${cancelled} طلب`, status: 'ملغى', statusColor: 'bg-red-100 text-red-700' },
+        { name: 'معدل إتمام الطلبات', details: 'نسبة الطلبات المكتملة', value: allOrders.length > 0 ? `${((delivered / allOrders.length) * 100).toFixed(1)}%` : '0%', status: 'نسبة', statusColor: 'bg-purple-100 text-purple-700' },
+        { name: 'متوسط قيمة الطلب', details: 'متوسط قيمة الطلب الواحد', value: `${avgOrder} ر.س`, status: 'متوسط', statusColor: 'bg-orange-100 text-orange-700' },
+      ];
+      const orderRows = allOrders.slice(0, 50).map(o => ({
+        name: `طلب #${o.orderNumber || o.id}`,
+        details: `${new Date(o.createdAt!).toLocaleDateString('ar')} - ${o.customerName || 'عميل'}`,
+        value: `${parseFloat(String(o.total || 0)).toFixed(2)} ر.س`,
+        status: statusLabel[o.status || ''] || o.status || '',
+        statusColor: statusColor[o.status || ''] || 'bg-gray-100 text-gray-700',
+      }));
+      return { data: [...summary, ...orderRows] };
+    }
+
     if (!type || type === 'products') {
       const items = await this.db.select().from(menuItems);
-      return {
-        products: items.map(item => ({
-          ...item,
-          totalSales: allOrders.filter(o => o.items?.includes(item.id)).length,
-          totalRevenue: allOrders.filter(o => o.items?.includes(item.id)).reduce((sum, o) => sum + parseFloat(String(o.total || 0)), 0)
-        }))
-      };
+      const data = items.map(item => ({
+        name: item.name,
+        details: item.category || '',
+        value: `${parseFloat(String(item.price || 0)).toFixed(2)} ر.س`,
+        status: item.isAvailable ? 'متاح' : 'غير متاح',
+        statusColor: item.isAvailable ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700',
+      }));
+      return { data };
     }
 
     if (type === 'drivers') {
       const driversData = await this.db.select().from(drivers);
-      return {
-        drivers: driversData.map(d => ({
-          ...d,
-          deliveries: allOrders.filter(o => o.driverId === d.id).length,
-          earnings: allOrders.filter(o => o.driverId === d.id).reduce((sum, o) => sum + parseFloat(String(o.driverEarnings || 0)), 0)
-        }))
-      };
+      const data = driversData.map(d => ({
+        name: d.name || d.phone,
+        details: d.phone || '',
+        value: `${allOrders.filter(o => o.driverId === d.id).length} توصيلة`,
+        status: d.isActive ? 'نشط' : 'غير نشط',
+        statusColor: d.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700',
+      }));
+      return { data };
     }
 
     if (type === 'customers') {
       const usersData = await this.db.select().from(users);
-      return {
-        customers: usersData.map(u => ({
-          ...u,
-          orders: allOrders.filter(o => o.customerId === u.id).length,
-          totalSpent: allOrders.filter(o => o.customerId === u.id).reduce((sum, o) => sum + parseFloat(String(o.total || 0)), 0)
-        }))
-      };
+      const data = usersData.map(u => ({
+        name: u.name || u.phone,
+        details: u.phone || '',
+        value: `${allOrders.filter(o => o.customerId === u.id).length} طلب`,
+        status: u.isActive ? 'نشط' : 'غير نشط',
+        statusColor: u.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700',
+      }));
+      return { data };
     }
 
     return {
-      summary: {
-        totalOrders: allOrders.length,
-        totalRevenue: allOrders.reduce((sum, o) => sum + parseFloat(String(o.total || 0)), 0),
-        completedOrders: allOrders.filter(o => o.status === 'delivered').length
-      }
+      data: [
+        { name: 'إجمالي الطلبات', details: `من ${start.toLocaleDateString('ar')} إلى ${end.toLocaleDateString('ar')}`, value: `${allOrders.length}`, status: 'إجمالي', statusColor: 'bg-blue-100 text-blue-700' },
+        { name: 'إجمالي الإيرادات', details: '', value: `${allOrders.reduce((s, o) => s + parseFloat(String(o.total || 0)), 0).toFixed(2)} ر.س`, status: 'إيرادات', statusColor: 'bg-green-100 text-green-700' },
+        { name: 'طلبات مكتملة', details: '', value: `${allOrders.filter(o => o.status === 'delivered').length}`, status: 'مكتمل', statusColor: 'bg-green-100 text-green-700' },
+      ]
     };
   }
 }
