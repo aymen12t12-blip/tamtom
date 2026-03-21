@@ -535,14 +535,9 @@ export default function AdminUiSettings() {
               </CardTitle>
             </CardHeader>
             <CardContent className="divide-y divide-gray-100">
-              <SettingRow label="رسوم التوصيل الافتراضية (ر.س)" settingKey="delivery_fee_default" placeholder="10" description="الرسوم الافتراضية عند عدم وجود منطقة محددة" />
               <SettingRow label="الحد الأدنى للطلب (ر.س)" settingKey="minimum_order_default" placeholder="20" description="أقل قيمة للطلب يمكن قبولها" />
-              <SettingRow label="وقت الفتح" settingKey="opening_time" placeholder="08:00" description="وقت فتح المتجر" />
-              <SettingRow label="وقت الإغلاق" settingKey="closing_time" placeholder="23:00" description="وقت إغلاق المتجر" />
-              <SettingRow label="خط عرض المتجر" settingKey="store_lat" placeholder="24.7136" description="للحساب الجغرافي لرسوم التوصيل" />
-              <SettingRow label="خط طول المتجر" settingKey="store_lng" placeholder="46.6753" description="للحساب الجغرافي لرسوم التوصيل" />
-              <SettingRow label="رسوم التوصيل لكل كيلومتر" settingKey="delivery_fee_per_km" placeholder="2" description="المبلغ المضاف لكل كيلومتر إضافي" />
-              <SettingRow label="الحد الأدنى لرسوم التوصيل" settingKey="min_delivery_fee" placeholder="5" description="أقل رسوم توصيل ممكنة" />
+              <SettingRow label="وقت الفتح" settingKey="opening_time" placeholder="08:00" description="وقت فتح المتجر يومياً" />
+              <SettingRow label="وقت الإغلاق" settingKey="closing_time" placeholder="23:00" description="وقت إغلاق المتجر يومياً" />
             </CardContent>
           </Card>
 

@@ -1,12 +1,27 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { User, Mail, Phone, Lock, Save, Eye, EyeOff, Shield } from 'lucide-react';
+import { User, Mail, Phone, Lock, Save, Eye, EyeOff, Shield, Plus, Trash2, Edit, UserCheck, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+
+const PERMISSIONS_LIST = [
+  { id: 'manage_orders', label: 'إدارة الطلبات' },
+  { id: 'manage_menu', label: 'إدارة المنتجات' },
+  { id: 'manage_customers', label: 'إدارة العملاء' },
+  { id: 'manage_drivers', label: 'إدارة السائقين' },
+  { id: 'manage_coupons', label: 'إدارة الكوبونات' },
+  { id: 'view_reports', label: 'عرض التقارير' },
+  { id: 'manage_categories', label: 'إدارة التصنيفات' },
+  { id: 'manage_settings', label: 'إدارة الإعدادات' },
+];
 
 interface AdminProfile {
   id: string;
@@ -24,6 +39,11 @@ export default function AdminProfile() {
   const queryClient = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [subAdminDialog, setSubAdminDialog] = useState(false);
+  const [editingSubAdmin, setEditingSubAdmin] = useState<any>(null);
+  const [subAdminForm, setSubAdminForm] = useState<any>({
+    name: '', email: '', username: '', phone: '', password: '', permissions: [], isActive: true
+  });
   
   const [formData, setFormData] = useState({
     name: '',
@@ -100,6 +120,64 @@ export default function AdminProfile() {
       });
     }
   });
+
+  // Sub-admins
+  const { data: subAdmins = [] } = useQuery<any[]>({
+    queryKey: ['/api/admin/sub-admins'],
+  });
+
+  const subAdminMutation = useMutation({
+    mutationFn: async (data: any) => {
+      if (editingSubAdmin) {
+        return (await apiRequest('PUT', `/api/admin/sub-admins/${editingSubAdmin.id}`, data)).json();
+      }
+      return (await apiRequest('POST', '/api/admin/sub-admins', data)).json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/sub-admins'] });
+      setSubAdminDialog(false);
+      setEditingSubAdmin(null);
+      setSubAdminForm({ name: '', email: '', username: '', phone: '', password: '', permissions: [], isActive: true });
+      toast({ title: editingSubAdmin ? "تم تحديث المشرف" : "تمت إضافة المشرف الفرعي بنجاح" });
+    },
+    onError: () => toast({ title: "حدث خطأ", variant: "destructive" }),
+  });
+
+  const deleteSubAdminMutation = useMutation({
+    mutationFn: async (id: string) => apiRequest('DELETE', `/api/admin/sub-admins/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/sub-admins'] });
+      toast({ title: "تم حذف المشرف الفرعي" });
+    },
+  });
+
+  const openAddSubAdmin = () => {
+    setEditingSubAdmin(null);
+    setSubAdminForm({ name: '', email: '', username: '', phone: '', password: '', permissions: [], isActive: true });
+    setSubAdminDialog(true);
+  };
+
+  const openEditSubAdmin = (sub: any) => {
+    setEditingSubAdmin(sub);
+    let perms: string[] = [];
+    try { perms = typeof sub.permissions === 'string' ? JSON.parse(sub.permissions) : (sub.permissions || []); } catch {}
+    setSubAdminForm({ name: sub.name || '', email: sub.email || '', username: sub.username || '', phone: sub.phone || '', password: '', permissions: perms, isActive: sub.isActive });
+    setSubAdminDialog(true);
+  };
+
+  const togglePermission = (permId: string) => {
+    setSubAdminForm((prev: any) => {
+      const perms: string[] = prev.permissions || [];
+      return { ...prev, permissions: perms.includes(permId) ? perms.filter((p: string) => p !== permId) : [...perms, permId] };
+    });
+  };
+
+  const handleSubAdminSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!subAdminForm.name.trim()) return toast({ title: "الاسم مطلوب", variant: "destructive" });
+    if (!editingSubAdmin && !subAdminForm.password) return toast({ title: "كلمة المرور مطلوبة", variant: "destructive" });
+    subAdminMutation.mutate(subAdminForm);
+  };
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -402,6 +480,133 @@ export default function AdminProfile() {
           </CardContent>
         </Card>
       )}
+
+      {/* إدارة المشرفين الفرعيين */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-orange-500" />
+              المشرفون الفرعيون
+            </CardTitle>
+            <Button size="sm" className="gap-2 bg-orange-500 hover:bg-orange-600" onClick={openAddSubAdmin}>
+              <Plus className="h-4 w-4" />
+              إضافة مشرف فرعي
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {subAdmins.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <UserCheck className="h-12 w-12 mx-auto mb-3 opacity-30" />
+              <p>لا يوجد مشرفون فرعيون بعد</p>
+              <p className="text-sm">أضف مشرفاً فرعياً لتفويض بعض المهام</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {subAdmins.map((sub: any) => {
+                let perms: string[] = [];
+                try { perms = typeof sub.permissions === 'string' ? JSON.parse(sub.permissions) : (sub.permissions || []); } catch {}
+                return (
+                  <div key={sub.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-full bg-orange-100 flex items-center justify-center">
+                        <User className="h-4 w-4 text-orange-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{sub.name}</p>
+                        <p className="text-xs text-muted-foreground">{sub.email || sub.username || sub.phone}</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {perms.slice(0, 3).map(p => (
+                            <Badge key={p} variant="secondary" className="text-xs py-0">
+                              {PERMISSIONS_LIST.find(pl => pl.id === p)?.label || p}
+                            </Badge>
+                          ))}
+                          {perms.length > 3 && <Badge variant="secondary" className="text-xs py-0">+{perms.length - 3}</Badge>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className={sub.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}>
+                        {sub.isActive ? 'نشط' : 'معطل'}
+                      </Badge>
+                      <Button size="icon" variant="ghost" onClick={() => openEditSubAdmin(sub)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="text-destructive" onClick={() => deleteSubAdminMutation.mutate(sub.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Dialog إضافة/تعديل مشرف فرعي */}
+      <Dialog open={subAdminDialog} onOpenChange={setSubAdminDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-orange-500" />
+              {editingSubAdmin ? 'تعديل المشرف الفرعي' : 'إضافة مشرف فرعي جديد'}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubAdminSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label>الاسم *</Label>
+                <Input value={subAdminForm.name} onChange={e => setSubAdminForm((p: any) => ({ ...p, name: e.target.value }))} required />
+              </div>
+              <div className="space-y-1">
+                <Label>اسم المستخدم</Label>
+                <Input value={subAdminForm.username} onChange={e => setSubAdminForm((p: any) => ({ ...p, username: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label>البريد الإلكتروني</Label>
+                <Input type="email" value={subAdminForm.email} onChange={e => setSubAdminForm((p: any) => ({ ...p, email: e.target.value }))} />
+              </div>
+              <div className="space-y-1">
+                <Label>رقم الهاتف</Label>
+                <Input value={subAdminForm.phone} onChange={e => setSubAdminForm((p: any) => ({ ...p, phone: e.target.value }))} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="flex items-center gap-2"><KeyRound className="h-4 w-4" /> {editingSubAdmin ? 'كلمة المرور الجديدة (اتركها فارغة لعدم التغيير)' : 'كلمة المرور *'}</Label>
+              <Input type="password" value={subAdminForm.password} onChange={e => setSubAdminForm((p: any) => ({ ...p, password: e.target.value }))} required={!editingSubAdmin} />
+            </div>
+            <div className="space-y-2">
+              <Label>الصلاحيات</Label>
+              <div className="grid grid-cols-2 gap-2 p-3 border rounded-lg bg-muted/20">
+                {PERMISSIONS_LIST.map(perm => (
+                  <div key={perm.id} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`perm-${perm.id}`}
+                      checked={(subAdminForm.permissions || []).includes(perm.id)}
+                      onCheckedChange={() => togglePermission(perm.id)}
+                    />
+                    <Label htmlFor={`perm-${perm.id}`} className="cursor-pointer text-sm font-normal">{perm.label}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+              <Switch checked={subAdminForm.isActive} onCheckedChange={v => setSubAdminForm((p: any) => ({ ...p, isActive: v }))} id="subAdminActive" />
+              <Label htmlFor="subAdminActive">الحساب نشط</Label>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setSubAdminDialog(false)}>إلغاء</Button>
+              <Button type="submit" disabled={subAdminMutation.isPending} className="bg-orange-500 hover:bg-orange-600">
+                {editingSubAdmin ? 'حفظ التغييرات' : 'إضافة المشرف'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, Users, Truck, ShoppingBag, UserCog, Calendar, FileText, Download } from 'lucide-react';
+import { BarChart3, Users, Truck, ShoppingBag, UserCog, Calendar, FileText, Download, PackageCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,6 +28,7 @@ export default function AdminDetailedReports() {
   });
 
   const reportConfig = {
+    orders: { title: 'تقارير الطلبات', icon: PackageCheck, color: 'text-orange-600' },
     products: { title: 'تقارير المنتجات', icon: ShoppingBag, color: 'text-blue-600' },
     drivers: { title: 'تقارير السائقين', icon: Truck, color: 'text-green-600' },
     customers: { title: 'تقارير العملاء', icon: Users, color: 'text-purple-600' },
@@ -50,6 +51,7 @@ export default function AdminDetailedReports() {
           <Select value={reportType} onValueChange={setReportType}>
             <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
             <SelectContent>
+              <SelectItem value="orders">تقارير الطلبات</SelectItem>
               <SelectItem value="products">تقارير المنتجات</SelectItem>
               <SelectItem value="drivers">تقارير السائقين</SelectItem>
               <SelectItem value="customers">تقارير العملاء</SelectItem>

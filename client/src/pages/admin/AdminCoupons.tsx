@@ -28,6 +28,10 @@ export default function AdminCoupons() {
     queryKey: ['/api/admin/coupons'],
   });
 
+  const { data: categories = [] } = useQuery<any[]>({
+    queryKey: ['/api/categories'],
+  });
+
   const couponMutation = useMutation({
     mutationFn: async (data: any) => {
       if (editingCoupon) {
@@ -55,8 +59,19 @@ export default function AdminCoupons() {
 
   const toggleMutation = useMutation({
     mutationFn: async ({ id, isActive }: any) => apiRequest('PUT', `/api/admin/coupons/${id}`, { isActive }),
+    onMutate: async ({ id, isActive }: any) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/admin/coupons'] });
+      const prev = queryClient.getQueryData<any[]>(['/api/admin/coupons']);
+      queryClient.setQueryData(['/api/admin/coupons'], (old: any[]) =>
+        (old || []).map(c => c.id === id ? { ...c, isActive } : c)
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx: any) => {
+      if (ctx?.prev) queryClient.setQueryData(['/api/admin/coupons'], ctx.prev);
+      toast({ title: "حدث خطأ", variant: "destructive" });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/coupons'] });
       toast({ title: "تم تحديث حالة الكوبون" });
     },
   });
@@ -70,6 +85,7 @@ export default function AdminCoupons() {
       minOrderValue: '0',
       usageLimit: '',
       perUserLimit: '1',
+      categoryId: '',
     });
     setIsDialogOpen(true);
   };
@@ -90,6 +106,7 @@ export default function AdminCoupons() {
       startDate: coupon.startDate ? coupon.startDate.split('T')[0] : '',
       endDate: coupon.endDate ? coupon.endDate.split('T')[0] : '',
       isActive: coupon.isActive,
+      categoryId: coupon.categoryId ? String(coupon.categoryId) : '',
     });
     setIsDialogOpen(true);
   };
@@ -105,6 +122,7 @@ export default function AdminCoupons() {
       perUserLimit: formData.perUserLimit ? parseInt(formData.perUserLimit) : 1,
       startDate: formData.startDate ? new Date(formData.startDate).toISOString() : null,
       endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null,
+      categoryId: formData.categoryId ? parseInt(formData.categoryId) : null,
     };
     couponMutation.mutate(submitData);
   };
@@ -392,15 +410,29 @@ export default function AdminCoupons() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>يطبق على</Label>
-              <Select value={formData.applicableFor || 'all'} onValueChange={v => setFormData((p: any) => ({ ...p, applicableFor: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">جميع العملاء</SelectItem>
-                  <SelectItem value="new_users">العملاء الجدد فقط</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>يطبق على</Label>
+                <Select value={formData.applicableFor || 'all'} onValueChange={v => setFormData((p: any) => ({ ...p, applicableFor: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">جميع العملاء</SelectItem>
+                    <SelectItem value="new_users">العملاء الجدد فقط</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>تصنيف محدد (اختياري)</Label>
+                <Select value={formData.categoryId || 'all'} onValueChange={v => setFormData((p: any) => ({ ...p, categoryId: v === 'all' ? '' : v }))}>
+                  <SelectTrigger><SelectValue placeholder="جميع التصنيفات" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">جميع التصنيفات</SelectItem>
+                    {categories.map((cat: any) => (
+                      <SelectItem key={cat.id} value={String(cat.id)}>{cat.nameAr || cat.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
