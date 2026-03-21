@@ -65,13 +65,14 @@ export default function Layout({ children }: LayoutProps) {
   const appName = getS('app_name', 'طمطوم');
   const supportTitle = getS('text_support_title', 'نحن معك..');
 
-  // Visibility Settings
-  const showBottomHome = isFeatureEnabled('bottom_bar_home_visible') !== false; // Default true if not set
-  const showBottomOrders = isFeatureEnabled('bottom_bar_orders_visible') !== false;
-  const showBottomSupport = isFeatureEnabled('bottom_bar_support_visible') !== false;
-  const showBottomFavorites = isFeatureEnabled('bottom_bar_favorites_visible') !== false;
-  const showBottomProfile = isFeatureEnabled('bottom_bar_profile_visible') !== false;
-  const showSideSupport = isFeatureEnabled('side_menu_support_visible') !== false;
+  // Visibility Settings — synced with admin keys in AdminUiSettings.tsx
+  const bottomBarEnabled = getSetting('bottom_bar_enabled') !== 'false'; // default shown
+  const showBottomOrders = getSetting('show_orders_page') !== 'false';
+  const showBottomSupport = getSetting('show_support_button') !== 'false';
+  const showSideSupport = getSetting('show_support_button') !== 'false';
+  const showShareButton = getSetting('show_share_button') !== 'false';
+  const showContactButton = getSetting('show_contact_button') !== 'false';
+  const showPrivacyButton = getSetting('show_privacy_button') !== 'false';
   
   const isAdminPage = location.startsWith('/admin');
   const isDeliveryPage = location.startsWith('/delivery');
