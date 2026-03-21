@@ -36,8 +36,8 @@ import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
-  // تم حذف مسارات المصادقة - تم إزالة نظام المصادقة بالكامل
-
+  // Auth Routes
+  app.use("/api/auth", authRoutes);
 
   // Admin and Advanced Routes
   app.use("/api/admin", adminRoutes);

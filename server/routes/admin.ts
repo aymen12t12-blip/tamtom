@@ -1,7 +1,5 @@
 import express from "express";
 import { storage } from "../storage";
-// تم حذف نظام المصادقة
-// تم حذف bcrypt - لا حاجة لتشفير كلمات المرور بعد إزالة نظام المصادقة
 import { z } from "zod";
 import { eq, and, desc, sql, or, like, asc, inArray } from "drizzle-orm";
 import {
@@ -80,9 +78,22 @@ const schema = {
   driverWithdrawals
 };
 
-// تم حذف middleware المصادقة - يمكن الوصول المباشر للبيانات بدون مصادقة
-
-// تم حذف جميع عمليات المصادقة - الوصول مباشر للبيانات بدون مصادقة
+// Middleware اختياري للمصادقة - يُضيف req.admin إذا كان التوكن صحيحاً
+router.use(async (req: any, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      const adminUser = await dbStorage.getAdminById(token);
+      if (adminUser && adminUser.isActive) {
+        req.admin = adminUser;
+      }
+    }
+  } catch (e) {
+    // ignore auth errors - proceed without admin context
+  }
+  next();
+});
 
 // لوحة المعلومات
 router.get("/dashboard", async (req, res) => {
@@ -1522,7 +1533,7 @@ router.post("/notifications", async (req: any, res) => {
   try {
     const notificationData = {
       ...req.body,
-      createdBy: req.admin.id
+      createdBy: req.admin?.id || null
     };
     
     const [newNotification] = await db.insert(schema.notifications)
@@ -1561,22 +1572,6 @@ router.put("/settings/:key", async (req, res) => {
     
     res.json(updatedSetting);
   } catch (error) {
-    res.status(500).json({ error: "خطأ في الخادم" });
-  }
-});
-
-// إعدادات واجهة المستخدم (متاحة للعامة)
-router.get("/ui-settings", async (req, res) => {
-  try {
-    const settings = await db
-      .select()
-      .from(schema.systemSettings)
-      .where(eq(schema.systemSettings.isActive, true))
-      .orderBy(schema.systemSettings.category, schema.systemSettings.key);
-    
-    res.json(settings);
-  } catch (error) {
-    console.error("خطأ في جلب إعدادات واجهة المستخدم:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -1832,86 +1827,7 @@ router.delete("/users/:id", async (req, res) => {
   }
 });
 
-// إدارة الملف الشخصي للمدير
-router.get("/profile", async (req: any, res) => {
-  try {
-    const admin = req.admin;
-    // إرجاع بيانات المدير (بدون كلمة المرور)
-    const adminProfile = {
-      id: admin.id,
-      name: admin.name,
-      email: admin.email,
-      username: admin.username,
-      phone: admin.phone,
-      userType: admin.userType,
-      isActive: admin.isActive,
-      createdAt: admin.createdAt
-    };
-    
-    res.json(adminProfile);
-  } catch (error) {
-    console.error("خطأ في جلب الملف الشخصي:", error);
-    res.status(500).json({ error: "خطأ في الخادم" });
-  }
-});
-
-// تحديث الملف الشخصي للمدير
-router.put("/profile", async (req: any, res) => {
-  try {
-    const { name, email, username, phone } = req.body;
-    const adminId = req.admin.id;
-
-    if (!name || !email) {
-      return res.status(400).json({ error: "الاسم والبريد الإلكتروني مطلوبان" });
-    }
-
-    // التحقق من عدم تكرار البريد الإلكتروني
-    const existingAdmin = await db.select().from(schema.adminUsers).where(
-      and(
-        eq(schema.adminUsers.email, email),
-        sql`${schema.adminUsers.id} != ${adminId}`
-      )
-    );
-
-    if (existingAdmin.length > 0) {
-      return res.status(400).json({ error: "البريد الإلكتروني مستخدم بالفعل" });
-    }
-
-    // تحديث البيانات
-    const [updatedAdmin] = await db.update(schema.adminUsers)
-      .set({
-        name,
-        email,
-        username: username || null,
-        phone: phone || null
-      })
-      .where(eq(schema.adminUsers.id, adminId))
-      .returning();
-
-    if (!updatedAdmin) {
-      return res.status(404).json({ error: "المدير غير موجود" });
-    }
-
-    // إرجاع البيانات المحدثة (بدون كلمة المرور)
-    const adminProfile = {
-      id: updatedAdmin.id,
-      name: updatedAdmin.name,
-      email: updatedAdmin.email,
-      username: updatedAdmin.username,
-      phone: updatedAdmin.phone,
-      userType: updatedAdmin.userType,
-      isActive: updatedAdmin.isActive,
-      createdAt: updatedAdmin.createdAt
-    };
-
-    res.json(adminProfile);
-  } catch (error) {
-    console.error("خطأ في تحديث الملف الشخصي:", error);
-    res.status(500).json({ error: "خطأ في الخادم" });
-  }
-});
-
-// تم حذف مسار تغيير كلمة المرور - لا حاجة له بعد إزالة نظام المصادقة
+// تم دمج مسارات الملف الشخصي في القسم الموجود أسفل (Admin Profile Routes)
 
 // UI Settings Routes
 router.get("/ui-settings", async (req, res) => {

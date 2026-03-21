@@ -89,6 +89,32 @@ npm start         # Run production server
 2. **Drivers** - Accept/manage deliveries, track earnings
 3. **Admins** - Full platform management (restaurants, menus, drivers, analytics)
 
+## Authentication
+
+### Admin Panel
+- Protected route: accessing `/admin` redirects to `/admin-login` if no token
+- Auth endpoint: `POST /api/auth/admin/login` (email + password)
+- Token stored in `localStorage` as `admin_token`
+- Logout clears token and redirects to `/admin-login`
+
+### Driver App
+- Protected: accessing `/driver` redirects to `/driver-login` if no token
+- Auth endpoint: `POST /api/auth/driver/login` (phone + password)
+- Token stored in `localStorage` as `driver_token`
+
+### Default Credentials (Seeded)
+- **Admin**: admin@alsarie-one.com / 777146387
+- **Admin 2**: manager@alsarie-one.com / manager123
+- **Driver 1**: phone in seed / 123456
+- **Driver 2**: phone in seed / 123456
+
+## UI Settings System
+Admin can control both customer and driver app interfaces from the admin panel at `/admin/ui-settings`:
+- **Customer App**: Show/hide pages (orders, tracking, search, categories, hero section, etc.), branding, support, privacy
+- **Driver App**: Show/hide wallet page, stats page, profile page, history page
+- Settings are stored in the `ui_settings` table and fetched via `/api/admin/ui-settings`
+- Both apps use `UiSettingsContext` to apply settings in real-time
+
 ## Default Seed Data
 On first run with a fresh database, the app seeds:
 - 5 categories (vegetables, fruits, dates, etc.)
