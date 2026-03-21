@@ -1,13 +1,98 @@
 import { dbStorage } from './db';
 
+// القائمة الكاملة للإعدادات الافتراضية - يتم التحقق منها وإضافتها عند كل تشغيل
+const defaultUiSettings = [
+  // إعدادات التنقل
+  { key: "show_categories", value: "true", category: "navigation", description: "عرض تصنيفات المطاعم في الصفحة الرئيسية" },
+  { key: "show_search_bar", value: "true", category: "navigation", description: "عرض شريط البحث في الصفحة الرئيسية" },
+  { key: "show_special_offers", value: "true", category: "navigation", description: "عرض العروض الخاصة والتخفيضات" },
+  { key: "show_orders_page", value: "true", category: "navigation", description: "عرض صفحة الطلبات في التنقل" },
+  { key: "show_track_orders_page", value: "true", category: "navigation", description: "عرض صفحة تتبع الطلبات في التنقل" },
+  { key: "show_admin_panel", value: "true", category: "navigation", description: "عرض لوحة التحكم الإدارية" },
+  { key: "show_delivery_app", value: "true", category: "navigation", description: "عرض تطبيق التوصيل" },
+  { key: "show_hero_section", value: "true", category: "navigation", description: "عرض البانر الرئيسي المتحرك" },
+  { key: "show_featured_products", value: "true", category: "navigation", description: "عرض المنتجات المميزة" },
+  { key: "bottom_bar_enabled", value: "true", category: "navigation", description: "إظهار شريط التنقل السفلي" },
+  // إعدادات عامة
+  { key: "app_name", value: "طمطوم للتوصيل", category: "general", description: "اسم التطبيق" },
+  { key: "app_theme", value: "#e11d48", category: "general", description: "اللون الأساسي للتطبيق (hex)" },
+  { key: "delivery_fee_default", value: "5", category: "general", description: "رسوم التوصيل الافتراضية (ريال)" },
+  { key: "minimum_order_default", value: "25", category: "general", description: "الحد الأدنى لقيمة الطلب (ريال)" },
+  // إعدادات التوصيل
+  { key: "delivery_base_fee", value: "5", category: "delivery", description: "الرسوم الأساسية للتوصيل (ريال)" },
+  { key: "min_delivery_fee", value: "5", category: "delivery", description: "الحد الأدنى لرسوم التوصيل (ريال)" },
+  { key: "delivery_fee_per_km", value: "2", category: "delivery", description: "رسوم التوصيل لكل كيلومتر (ريال)" },
+  // إعدادات المتجر
+  { key: "store_lat", value: "15.3694", category: "store", description: "خط العرض لموقع المتجر" },
+  { key: "store_lng", value: "44.1910", category: "store", description: "خط الطول لموقع المتجر" },
+  { key: "opening_time", value: "08:00", category: "store", description: "وقت فتح المتجر" },
+  { key: "closing_time", value: "23:00", category: "store", description: "وقت إغلاق المتجر" },
+  { key: "store_status", value: "open", category: "store", description: "حالة المتجر الحالية" },
+  // إعدادات الهوية البصرية
+  { key: "header_logo_url", value: "", category: "branding", description: "شعار الشريط العلوي" },
+  { key: "sidebar_image_url", value: "", category: "branding", description: "صورة خلفية القائمة الجانبية" },
+  { key: "show_sidebar_logo", value: "true", category: "branding", description: "إظهار شعار القائمة الجانبية" },
+  { key: "top_bar_logo_url", value: "", category: "branding", description: "شعار الشريط العلوي الثانوي" },
+  { key: "logo_animation_duration", value: "2.5", category: "branding", description: "مدة ظهور الشعار (ثواني)" },
+  // إعدادات شاشة الترحيب
+  { key: "show_splash_screen", value: "true", category: "splash", description: "عرض شاشة الترحيب" },
+  { key: "splash_image_url", value: "", category: "splash", description: "صورة شاشة الترحيب" },
+  { key: "splash_image_url_2", value: "", category: "splash", description: "صورة إضافية للترحيب" },
+  { key: "splash_title", value: "طمطوم", category: "splash", description: "عنوان شاشة الترحيب" },
+  { key: "splash_subtitle", value: "أفضل الخضار والفواكه الطازجة توصل لبابك", category: "splash", description: "نص الترحيب" },
+  { key: "splash_button_text", value: "ابدأ الآن", category: "splash", description: "نص زر البداية" },
+  // إعدادات الدعم والتواصل
+  { key: "show_support_button", value: "true", category: "support", description: "إظهار زر الدعم في الشريط السفلي" },
+  { key: "support_whatsapp", value: "", category: "support", description: "رقم واتساب الدعم" },
+  { key: "support_phone", value: "", category: "support", description: "رقم الهاتف المباشر" },
+  { key: "text_support_title", value: "نحن معك 🌟", category: "support", description: "عنوان نافذة الدعم" },
+  // إعدادات المشاركة والقائمة الجانبية
+  { key: "show_share_button", value: "true", category: "sidebar", description: "إظهار زر المشاركة في القائمة" },
+  { key: "show_contact_button", value: "true", category: "sidebar", description: "إظهار زر التواصل في القائمة" },
+  { key: "share_text", value: "جرب تطبيق طمطوم الآن!", category: "sidebar", description: "نص المشاركة" },
+  { key: "share_url", value: "", category: "sidebar", description: "رابط المشاركة" },
+  // إعدادات الخصوصية
+  { key: "show_privacy_button", value: "true", category: "privacy", description: "إظهار زر سياسة الخصوصية" },
+  { key: "privacy_policy_text", value: "", category: "privacy", description: "نص سياسة الخصوصية" },
+  // إعدادات السلة والدفع
+  { key: "show_payment_cards", value: "true", category: "cart", description: "إظهار بطاقات الدفع في السلة" },
+  { key: "show_coupon_box_always", value: "false", category: "cart", description: "إظهار صندوق الكوبون دائمًا" },
+  { key: "cart_checkout_button_text", value: "تأكيد الطلب", category: "cart", description: "نص زر الدفع" },
+  // إعدادات تطبيق السائق - إظهار/إخفاء الصفحات
+  { key: "driver_show_wallet", value: "true", category: "driver", description: "إظهار صفحة المحفظة للسائق" },
+  { key: "driver_show_stats", value: "true", category: "driver", description: "إظهار صفحة الإحصائيات للسائق" },
+  { key: "driver_show_profile", value: "true", category: "driver", description: "إظهار صفحة الملف الشخصي للسائق" },
+  { key: "driver_show_history", value: "true", category: "driver", description: "إظهار سجل التوصيل للسائق" },
+];
+
+// ضمان وجود الإعدادات الافتراضية في قاعدة البيانات (لكل تشغيل)
+export async function ensureDefaultSettings() {
+  try {
+    const existing = await dbStorage.getUiSettings();
+    const existingKeys = new Set(existing.map(s => s.key));
+    let added = 0;
+    for (const setting of defaultUiSettings) {
+      if (!existingKeys.has(setting.key)) {
+        await dbStorage.createUiSetting(setting);
+        added++;
+      }
+    }
+    if (added > 0) {
+      console.log(`⚙️ أُضيفت ${added} إعدادات واجهة جديدة إلى قاعدة البيانات`);
+    }
+  } catch (error) {
+    console.error('خطأ في ضمان الإعدادات الافتراضية:', error);
+  }
+}
+
 export async function seedDefaultData() {
   try {
     console.log('🌱 Starting database seeding...');
 
-    // Check if data already exists to avoid duplicates
+    // التحقق من وجود البيانات لتجنب التكرار
     const existingCategories = await dbStorage.getCategories();
     if (existingCategories.length > 0) {
-      console.log('✓ Database already seeded, skipping...');
+      console.log('✓ Database already seeded, skipping initial data...');
       return;
     }
 
@@ -160,133 +245,9 @@ export async function seedDefaultData() {
       console.log(`  ✓ Created menu item: ${menuItem.name}`);
     }
 
-    // Seed UI Settings
-    const uiSettings = [
-      // Navigation Settings
-      {
-        key: "show_categories",
-        value: "true",
-        category: "navigation",
-        description: "عرض تصنيفات المطاعم في الصفحة الرئيسية"
-      },
-      {
-        key: "show_search_bar",
-        value: "true",
-        category: "navigation",
-        description: "عرض شريط البحث في الصفحة الرئيسية"
-      },
-      {
-        key: "show_special_offers",
-        value: "true",
-        category: "navigation",
-        description: "عرض العروض الخاصة والتخفيضات"
-      },
-      {
-        key: "show_orders_page",
-        value: "true",
-        category: "navigation",
-        description: "عرض صفحة الطلبات في التنقل"
-      },
-      {
-        key: "show_track_orders_page",
-        value: "true",
-        category: "navigation",
-        description: "عرض صفحة تتبع الطلبات في التنقل"
-      },
-      {
-        key: "show_admin_panel",
-        value: "true",
-        category: "navigation",
-        description: "عرض لوحة التحكم الإدارية"
-      },
-      {
-        key: "show_delivery_app",
-        value: "true",
-        category: "navigation",
-        description: "عرض تطبيق التوصيل"
-      },
-      
-      // App Settings
-      {
-        key: "app_name",
-        value: "طمطوم للتوصيل",
-        category: "general",
-        description: "اسم التطبيق الذي يظهر للمستخدمين"
-      },
-      {
-        key: "app_theme",
-        value: "#e11d48", // Rose-600 (Tamtoom Red)
-        category: "general",
-        description: "اللون الأساسي للتطبيق (hex color)"
-      },
-      {
-        key: "delivery_fee_default",
-        value: "5",
-        category: "general",
-        description: "رسوم التوصيل الافتراضية (ريال)"
-      },
-      {
-        key: "delivery_base_fee",
-        value: "5",
-        category: "delivery",
-        description: "الرسوم الأساسية للتوصيل (ريال)"
-      },
-      {
-        key: "min_delivery_fee",
-        value: "5",
-        category: "delivery",
-        description: "الحد الأدنى لرسوم التوصيل (ريال)"
-      },
-      {
-        key: "store_lat",
-        value: "15.3694",
-        category: "store",
-        description: "خط العرض لموقع المتجر الرئيسي"
-      },
-      {
-        key: "store_lng",
-        value: "44.1910",
-        category: "store",
-        description: "خط الطول لموقع المتجر الرئيسي"
-      },
-      {
-        key: "minimum_order_default",
-        value: "25",
-        category: "general",
-        description: "الحد الأدنى لقيمة الطلب (ريال)"
-      },
-      
-      // Store Settings
-      {
-        key: "opening_time",
-        value: "08:00",
-        category: "store",
-        description: "وقت فتح المتجر (HH:MM)"
-      },
-      {
-        key: "closing_time",
-        value: "23:00",
-        category: "store",
-        description: "وقت إغلاق المتجر (HH:MM)"
-      },
-      {
-        key: "store_status",
-        value: "open",
-        category: "store",
-        description: "حالة المتجر الحالية"
-      },
-      
-      // إعدادات رسوم التوصيل
-      {
-        key: "delivery_fee_per_km",
-        value: "2",
-        category: "delivery",
-        description: "رسوم التوصيل لكل كيلومتر (ريال)"
-      }
-    ];
-
+    // زرع إعدادات الواجهة باستخدام القائمة الشاملة
     console.log('⚙️ Seeding UI settings...');
-    for (const settingData of uiSettings) {
+    for (const settingData of defaultUiSettings) {
       const setting = await dbStorage.createUiSetting(settingData);
       console.log(`  ✓ Created UI setting: ${setting.key}`);
     }
@@ -348,7 +309,7 @@ export async function seedDefaultData() {
     }
 
     console.log('✅ Database seeding completed successfully!');
-    console.log(`📊 Seeded: ${categories.length} categories, ${restaurants.length} restaurants, ${menuItems.length} menu items, ${uiSettings.length} UI settings, ${adminUsers.length} admin users, ${defaultDrivers.length} drivers`);
+    console.log(`📊 Seeded: ${categories.length} categories, ${restaurants.length} restaurants, ${menuItems.length} menu items, ${defaultUiSettings.length} UI settings, ${adminUsers.length} admin users, ${defaultDrivers.length} drivers`);
 
   } catch (error) {
     console.error('❌ Database seeding failed:', error);

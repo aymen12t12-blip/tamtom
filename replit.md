@@ -94,7 +94,8 @@ npm start         # Run production server
 ### Admin Panel
 - Protected route: accessing `/admin` redirects to `/admin-login` if no token
 - Auth endpoint: `POST /api/auth/admin/login` (email + password)
-- Token stored in `localStorage` as `admin_token`
+- Validation: **bcrypt only** — passwords verified against hashed DB values (no bypass)
+- Token stored in `localStorage` as `admin_token` (uses admin UUID as token)
 - Logout clears token and redirects to `/admin-login`
 
 ### Driver App
@@ -105,8 +106,8 @@ npm start         # Run production server
 ### Default Credentials (Seeded)
 - **Admin**: admin@alsarie-one.com / 777146387
 - **Admin 2**: manager@alsarie-one.com / manager123
-- **Driver 1**: phone in seed / 123456
-- **Driver 2**: phone in seed / 123456
+- **Driver 1**: +967771234567 / 123456
+- **Driver 2**: +967779876543 / 123456
 
 ## UI Settings System
 Admin can control both customer and driver app interfaces from the admin panel at `/admin/ui-settings`:

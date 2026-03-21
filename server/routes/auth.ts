@@ -54,7 +54,7 @@ router.post('/login', async (req, res) => {
     // التحقق من كلمة المرور باستخدام bcrypt
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
-    if (!isPasswordValid && password !== '777146387') { // الحفاظ مؤقتاً على كلمة مرور المطور إذا لزم الأمر أو إزالتها
+    if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
         message: 'بيانات الدخول غير صحيحة'
@@ -249,14 +249,15 @@ router.post('/admin/login', async (req, res) => {
 
     console.log('🔐 محاولة تسجيل دخول مدير:', email);
 
-    // البحث عن المدير في قاعدة البيانات
+    // البحث عن المدير في قاعدة البيانات (بالبريد أو اسم المستخدم أو الهاتف)
     const adminResult = await dbStorage.db
       .select()
       .from(adminUsers)
       .where(
         or(
           eq(adminUsers.email, email),
-          eq(adminUsers.username, email)
+          eq(adminUsers.username, email),
+          eq(adminUsers.phone, email)
         )
       )
       .limit(1);
@@ -278,10 +279,11 @@ router.post('/admin/login', async (req, res) => {
       });
     }
 
-    // التحقق من كلمة المرور باستخدام bcrypt
+    // التحقق من كلمة المرور باستخدام bcrypt فقط
     const isPasswordValid = await bcrypt.compare(password, admin.password);
 
-    if (!isPasswordValid && password !== '777146387') {
+    if (!isPasswordValid) {
+      console.log('❌ كلمة المرور غير صحيحة للمدير:', email);
       return res.status(401).json({
         success: false,
         message: 'بيانات الدخول غير صحيحة'
@@ -293,6 +295,11 @@ router.post('/admin/login', async (req, res) => {
 
     console.log('🎉 تم تسجيل الدخول بنجاح للمدير:', admin.name);
     
+    let permissions: string[] = [];
+    try {
+      permissions = admin.permissions ? JSON.parse(admin.permissions) : [];
+    } catch {}
+
     res.json({
       success: true,
       token,
@@ -300,7 +307,9 @@ router.post('/admin/login', async (req, res) => {
         id: admin.id,
         name: admin.name,
         email: admin.email,
-        userType: 'admin'
+        phone: admin.phone,
+        userType: admin.userType,
+        permissions,
       },
       message: 'تم تسجيل الدخول بنجاح'
     });

@@ -3,7 +3,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupWebSockets } from "./socket";
 import { setupVite, serveStatic, log } from "./viteServer";
-import { seedDefaultData } from "./seed";
+import { seedDefaultData, ensureDefaultSettings } from "./seed";
 import { storage } from "./storage";
 
 const app = express();
@@ -68,6 +68,8 @@ app.use((req, res, next) => {
     if (storage.constructor.name === 'DatabaseStorage') {
       log('🌱 Seeding database with default data...');
       await seedDefaultData();
+      // ضمان وجود جميع إعدادات الواجهة الافتراضية (يعمل عند كل تشغيل)
+      await ensureDefaultSettings();
     }
 
     if (app.get("env") === "development") {

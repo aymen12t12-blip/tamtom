@@ -2250,11 +2250,28 @@ async getNotifications(recipientType?: string, recipientId?: string, unread?: bo
       return { data };
     }
 
+    if (type === 'admins') {
+      const adminsData = await this.db.select().from(adminUsers);
+      const data = adminsData.map((a: any) => ({
+        name: a.name || a.email,
+        details: a.phone || a.email || '',
+        value: a.userType === 'admin' ? 'مدير رئيسي' : 'مشرف فرعي',
+        status: a.isActive ? 'نشط' : 'غير نشط',
+        statusColor: a.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700',
+      }));
+      return { data };
+    }
+
+    const total = allOrders.reduce((s, o) => s + parseFloat(String(o.total || 0)), 0);
+    const delivered = allOrders.filter(o => o.status === 'delivered').length;
+    const cancelled = allOrders.filter(o => o.status === 'cancelled').length;
     return {
       data: [
-        { name: 'إجمالي الطلبات', details: `من ${start.toLocaleDateString('ar')} إلى ${end.toLocaleDateString('ar')}`, value: `${allOrders.length}`, status: 'إجمالي', statusColor: 'bg-blue-100 text-blue-700' },
-        { name: 'إجمالي الإيرادات', details: '', value: `${allOrders.reduce((s, o) => s + parseFloat(String(o.total || 0)), 0).toFixed(2)} ر.س`, status: 'إيرادات', statusColor: 'bg-green-100 text-green-700' },
-        { name: 'طلبات مكتملة', details: '', value: `${allOrders.filter(o => o.status === 'delivered').length}`, status: 'مكتمل', statusColor: 'bg-green-100 text-green-700' },
+        { name: 'إجمالي الطلبات', details: `من ${start.toLocaleDateString('ar')} إلى ${end.toLocaleDateString('ar')}`, value: `${allOrders.length} طلب`, status: 'إجمالي', statusColor: 'bg-blue-100 text-blue-700' },
+        { name: 'إجمالي الإيرادات', details: 'مجموع قيم جميع الطلبات', value: `${total.toFixed(2)} ر.س`, status: 'إيرادات', statusColor: 'bg-green-100 text-green-700' },
+        { name: 'طلبات مكتملة', details: 'الطلبات التي تم توصيلها', value: `${delivered} طلب`, status: 'مكتمل', statusColor: 'bg-green-100 text-green-700' },
+        { name: 'طلبات ملغاة', details: 'الطلبات التي تم إلغاؤها', value: `${cancelled} طلب`, status: 'ملغى', statusColor: 'bg-red-100 text-red-700' },
+        { name: 'معدل الإتمام', details: 'نسبة الطلبات المكتملة', value: allOrders.length > 0 ? `${((delivered / allOrders.length) * 100).toFixed(1)}%` : '0%', status: 'نسبة', statusColor: 'bg-purple-100 text-purple-700' },
       ]
     };
   }

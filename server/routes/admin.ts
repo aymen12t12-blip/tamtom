@@ -1,4 +1,5 @@
 import express from "express";
+import bcrypt from "bcryptjs";
 import { storage } from "../storage";
 import { z } from "zod";
 import { eq, and, desc, sql, or, like, asc, inArray } from "drizzle-orm";
@@ -2121,9 +2122,15 @@ router.get("/backup/stats", async (req, res) => {
 });
 
 // Admin Profile Routes
-router.get("/profile", async (req, res) => {
+router.get("/profile", async (req: any, res) => {
   try {
-    const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.userType, 'admin')).limit(1);
+    let admin: any = null;
+    if (req.admin) {
+      admin = req.admin;
+    } else {
+      const [found] = await db.select().from(adminUsers).where(eq(adminUsers.userType, 'admin')).limit(1);
+      admin = found;
+    }
     if (!admin) return res.status(404).json({ error: "لم يتم العثور على ملف المدير" });
     const { password: _, ...safeAdmin } = admin as any;
     res.json(safeAdmin);
@@ -2132,12 +2139,19 @@ router.get("/profile", async (req, res) => {
   }
 });
 
-router.put("/profile", async (req, res) => {
+router.put("/profile", async (req: any, res) => {
   try {
     const { name, email, username, phone } = req.body;
-    const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.userType, 'admin')).limit(1);
-    if (!admin) return res.status(404).json({ error: "لم يتم العثور على ملف المدير" });
-    const [updated] = await db.update(adminUsers).set({ name, email, username, phone }).where(eq(adminUsers.id, admin.id)).returning();
+    let adminId: string;
+    if (req.admin) {
+      adminId = req.admin.id;
+    } else {
+      const [found] = await db.select().from(adminUsers).where(eq(adminUsers.userType, 'admin')).limit(1);
+      if (!found) return res.status(404).json({ error: "لم يتم العثور على ملف المدير" });
+      adminId = found.id;
+    }
+    const [updated] = await db.update(adminUsers).set({ name, email, username, phone }).where(eq(adminUsers.id, adminId)).returning();
+    if (!updated) return res.status(404).json({ error: "لم يتم العثور على ملف المدير" });
     const { password: _, ...safeAdmin } = updated as any;
     res.json(safeAdmin);
   } catch (error) {
@@ -2145,16 +2159,24 @@ router.put("/profile", async (req, res) => {
   }
 });
 
-router.put("/change-password", async (req, res) => {
+router.put("/change-password", async (req: any, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.userType, 'admin')).limit(1);
+    let admin: any = null;
+    if (req.admin) {
+      const [found] = await db.select().from(adminUsers).where(eq(adminUsers.id, req.admin.id)).limit(1);
+      admin = found;
+    } else {
+      const [found] = await db.select().from(adminUsers).where(eq(adminUsers.userType, 'admin')).limit(1);
+      admin = found;
+    }
     if (!admin) return res.status(404).json({ error: "لم يتم العثور على المدير" });
-    const adminAny = admin as any;
-    if (adminAny.password && adminAny.password !== currentPassword) {
+    const isValid = await bcrypt.compare(currentPassword, admin.password || '');
+    if (!isValid) {
       return res.status(400).json({ error: "كلمة المرور الحالية غير صحيحة" });
     }
-    await db.update(adminUsers).set({ password: newPassword } as any).where(eq(adminUsers.id, admin.id));
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await db.update(adminUsers).set({ password: hashed } as any).where(eq(adminUsers.id, admin.id));
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "خطأ في الخادم" });
@@ -2174,26 +2196,46 @@ router.get("/sub-admins", async (req, res) => {
 
 router.post("/sub-admins", async (req, res) => {
   try {
-    const { name, email, username, phone, password, permissions } = req.body;
+    const { name, phone, password, permissions, isActive } = req.body;
+    let { email, username } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: "الاسم مطلوب" });
+    if (!phone || !phone.trim()) return res.status(400).json({ error: "رقم الهاتف مطلوب" });
+    if (!password) return res.status(400).json({ error: "كلمة المرور مطلوبة" });
+    // توليد بريد إلكتروني افتراضي إذا لم يُقدَّم
+    if (!email || !email.trim()) {
+      email = `${phone.replace(/\D/g, '')}@subadmin.local`;
+    }
+    const hashed = await bcrypt.hash(password, 10);
     const [newSubAdmin] = await db.insert(adminUsers).values({
-      name, email, username, phone, password,
+      name, email, username: username || null, phone,
+      password: hashed,
       userType: 'sub_admin',
       permissions: typeof permissions === 'string' ? permissions : JSON.stringify(permissions || []),
-      isActive: true,
+      isActive: isActive !== false,
     } as any).returning();
     const { password: _, ...safe } = newSubAdmin as any;
     res.status(201).json(safe);
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === '23505') {
+      return res.status(409).json({ error: "رقم الهاتف أو البريد الإلكتروني مستخدم بالفعل" });
+    }
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
 
 router.put("/sub-admins/:id", async (req, res) => {
   try {
-    const { name, email, username, phone, password, permissions, isActive } = req.body;
-    const updateData: any = { name, email, username, phone, isActive };
-    if (password) updateData.password = password;
-    if (permissions !== undefined) updateData.permissions = typeof permissions === 'string' ? permissions : JSON.stringify(permissions);
+    const { name, phone, password, permissions, isActive } = req.body;
+    let { email, username } = req.body;
+    const updateData: any = { name, phone, isActive };
+    if (email !== undefined) updateData.email = email;
+    if (username !== undefined) updateData.username = username || null;
+    if (password) {
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+    if (permissions !== undefined) {
+      updateData.permissions = typeof permissions === 'string' ? permissions : JSON.stringify(permissions);
+    }
     const [updated] = await db.update(adminUsers).set(updateData).where(eq(adminUsers.id, req.params.id)).returning();
     if (!updated) return res.status(404).json({ error: "المشرف غير موجود" });
     const { password: _, ...safe } = updated as any;
