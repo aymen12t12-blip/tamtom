@@ -175,6 +175,7 @@ export default function AdminProfile() {
   const handleSubAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!subAdminForm.name.trim()) return toast({ title: "الاسم مطلوب", variant: "destructive" });
+    if (!subAdminForm.phone.trim()) return toast({ title: "رقم الهاتف مطلوب لتسجيل الدخول", variant: "destructive" });
     if (!editingSubAdmin && !subAdminForm.password) return toast({ title: "كلمة المرور مطلوبة", variant: "destructive" });
     subAdminMutation.mutate(subAdminForm);
   };
@@ -559,24 +560,33 @@ export default function AdminProfile() {
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubAdminSubmit} className="space-y-4">
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+              يتم تسجيل الدخول بـ <strong>رقم الهاتف</strong> أو اسم المستخدم مع كلمة المرور
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <Label>الاسم *</Label>
+                <Label>الاسم الكامل *</Label>
                 <Input value={subAdminForm.name} onChange={e => setSubAdminForm((p: any) => ({ ...p, name: e.target.value }))} required />
               </div>
               <div className="space-y-1">
-                <Label>اسم المستخدم</Label>
-                <Input value={subAdminForm.username} onChange={e => setSubAdminForm((p: any) => ({ ...p, username: e.target.value }))} />
+                <Label>رقم الهاتف * (للدخول)</Label>
+                <Input
+                  type="tel"
+                  placeholder="+966xxxxxxxxx"
+                  value={subAdminForm.phone}
+                  onChange={e => setSubAdminForm((p: any) => ({ ...p, phone: e.target.value }))}
+                  required
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <Label>البريد الإلكتروني</Label>
-                <Input type="email" value={subAdminForm.email} onChange={e => setSubAdminForm((p: any) => ({ ...p, email: e.target.value }))} />
+                <Label>اسم المستخدم (اختياري)</Label>
+                <Input value={subAdminForm.username} onChange={e => setSubAdminForm((p: any) => ({ ...p, username: e.target.value }))} />
               </div>
               <div className="space-y-1">
-                <Label>رقم الهاتف</Label>
-                <Input value={subAdminForm.phone} onChange={e => setSubAdminForm((p: any) => ({ ...p, phone: e.target.value }))} />
+                <Label>البريد الإلكتروني (اختياري)</Label>
+                <Input type="email" value={subAdminForm.email} onChange={e => setSubAdminForm((p: any) => ({ ...p, email: e.target.value }))} />
               </div>
             </div>
             <div className="space-y-1">

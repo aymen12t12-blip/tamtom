@@ -21,7 +21,7 @@ export default function AdminLoginPage() {
 
   // إعادة توجيه إذا كان المستخدم مسجل دخول بالفعل
   useEffect(() => {
-    if (isAuthenticated && user?.userType === 'admin') {
+    if (isAuthenticated && (user?.userType === 'admin' || user?.userType === 'sub_admin')) {
       setLocation('/admin');
     }
   }, [isAuthenticated, user, setLocation]);
@@ -131,7 +131,7 @@ export default function AdminLoginPage() {
                     type="text"
                     value={formData.email}
                     onChange={handleInputChange}
-                    placeholder="اسم المستخدم أو admin@example.com"
+                    placeholder="البريد الإلكتروني، اسم المستخدم أو رقم الهاتف"
                     className="pr-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
                     disabled={isSubmitting}

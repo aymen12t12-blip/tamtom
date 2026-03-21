@@ -12,7 +12,10 @@ import { ar } from 'date-fns/locale';
 
 export default function AdminDetailedReports() {
   const [reportType, setReportType] = useState('products');
-  const [dateRange, setDateRange] = useState({ from: new Date(), to: new Date() });
+  const [dateRange, setDateRange] = useState({
+    from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+    to: new Date()
+  });
 
   const { data: report, isLoading } = useQuery({
     queryKey: ['/api/admin/reports/detailed', reportType, dateRange],
