@@ -223,4 +223,35 @@ router.get("/search", async (req, res) => {
   }
 });
 
+// التحقق من صحة الكوبون - للعملاء
+router.post("/coupons/validate", async (req, res) => {
+  try {
+    const { code, orderValue, categoryIds } = req.body;
+    if (!code) return res.status(400).json({ valid: false, message: "كود الكوبون مطلوب" });
+
+    const result = await storage.validateCoupon(code, orderValue || 0);
+
+    if (!result.valid) {
+      return res.json(result);
+    }
+
+    // التحقق من تصنيف الكوبون
+    if (result.coupon?.categoryId && categoryIds?.length > 0) {
+      const couponCategoryId = String(result.coupon.categoryId);
+      const cartCategories = categoryIds.map((id: any) => String(id));
+      if (!cartCategories.includes(couponCategoryId)) {
+        return res.json({
+          valid: false,
+          message: "هذا الكوبون مخصص لتصنيف معين لا يوجد في سلتك"
+        });
+      }
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error("خطأ في التحقق من الكوبون:", error);
+    res.status(500).json({ valid: false, message: "خطأ في التحقق من الكوبون" });
+  }
+});
+
 export { router as publicRoutes };
