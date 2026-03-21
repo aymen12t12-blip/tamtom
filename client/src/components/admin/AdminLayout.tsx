@@ -36,6 +36,19 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
+  // قراءة بيانات المستخدم المسجل من localStorage
+  const currentAdmin = (() => {
+    try {
+      const stored = localStorage.getItem('admin_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  })();
+  const isSubAdmin = currentAdmin?.userType === 'sub_admin';
+  const adminPermissions: string[] = currentAdmin?.permissions || [];
+
+  // تحقق من الصلاحية - المدير الرئيسي يملك كل الصلاحيات
+  const hasPermission = (perm: string) => !isSubAdmin || adminPermissions.includes(perm);
+
   const { data: uiSettings } = useQuery<UiSettings[]>({
     queryKey: ['/api/admin/ui-settings'],
   });
