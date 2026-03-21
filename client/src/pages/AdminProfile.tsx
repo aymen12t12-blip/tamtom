@@ -547,7 +547,11 @@ export default function AdminProfile() {
 
       {/* Dialog إضافة/تعديل مشرف فرعي */}
       <Dialog open={subAdminDialog} onOpenChange={setSubAdminDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent
+          className="max-w-lg"
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={() => setSubAdminDialog(false)}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-orange-500" />

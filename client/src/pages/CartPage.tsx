@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowRight, Trash2, MapPin } from 'lucide-react';
+import { ArrowRight, Trash2, MapPin, Tag, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { useCart } from '../context/CartContext';
 import { useUserLocation as useCoordinates } from '../context/LocationContext';
 import { useToast } from '@/hooks/use-toast';
@@ -83,6 +84,49 @@ export default function CartPage() {
     calculateFee();
   }, [userLocation.position, subtotal, restaurantId]);
 
+  const [couponCode, setCouponCode] = useState('');
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponData, setCouponData] = useState<any>(null);
+  const [couponError, setCouponError] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+
+  const handleValidateCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    setCouponError('');
+    setCouponDiscount(0);
+    setCouponData(null);
+    try {
+      const categoryIds = [...new Set(items.map((i: any) => i.categoryId).filter(Boolean))];
+      const res = await apiRequest('POST', '/api/coupons/validate', {
+        code: couponCode.trim().toUpperCase(),
+        orderValue: subtotal,
+        categoryIds,
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setCouponData(data.coupon);
+        setCouponDiscount(data.discount || 0);
+        toast({ title: "تم تطبيق الكوبون", description: `وفّرت ${formatCurrency(data.discount || 0)}` });
+      } else {
+        setCouponError(data.message || "كوبون غير صالح");
+      }
+    } catch {
+      setCouponError("خطأ في التحقق من الكوبون");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponCode('');
+    setCouponDiscount(0);
+    setCouponData(null);
+    setCouponError('');
+  };
+
+  const finalTotal = Math.max(0, total - couponDiscount);
+
   const [orderForm, setOrderForm] = useState({
     customerName: '',
     customerPhone: '',
@@ -149,7 +193,7 @@ export default function CartPage() {
       items: JSON.stringify(items),
       subtotal: subtotal.toString(),
       deliveryFee: deliveryFee.toString(),
-      total: total.toString(),
+      total: finalTotal.toString(),
       restaurantId: items[0]?.restaurantId || undefined,
       customerLocationLat: userLocation.position?.coords.latitude.toString(),
       customerLocationLng: userLocation.position?.coords.longitude.toString(),
@@ -309,11 +353,57 @@ export default function CartPage() {
                 </div>
               )}
 
-              <div className="border-t border-border pt-2 mt-2">
-                <div className="flex justify-between font-bold">
+              {/* Coupon Section */}
+              <div className="border-t border-border pt-3 mt-2">
+                {couponData ? (
+                  <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-2.5 mb-2">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <div>
+                        <p className="text-sm font-semibold text-green-700">{couponData.nameAr || couponCode}</p>
+                        <p className="text-xs text-green-600">خصم {formatCurrency(couponDiscount)}</p>
+                      </div>
+                    </div>
+                    <button onClick={handleRemoveCoupon} className="text-red-400 hover:text-red-600">
+                      <XCircle className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 mb-2">
+                    <div className="flex gap-2">
+                      <Input
+                        value={couponCode}
+                        onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }}
+                        placeholder="أدخل كود الخصم"
+                        className="font-mono text-sm h-9"
+                        onKeyDown={(e) => e.key === 'Enter' && handleValidateCoupon()}
+                        dir="ltr"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={handleValidateCoupon}
+                        disabled={couponLoading || !couponCode.trim()}
+                        className="h-9 gap-1.5 border-orange-300 text-orange-600 hover:bg-orange-50"
+                      >
+                        {couponLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Tag className="h-3.5 w-3.5" />}
+                        تطبيق
+                      </Button>
+                    </div>
+                    {couponError && <p className="text-xs text-red-500 flex items-center gap-1"><XCircle className="h-3 w-3" />{couponError}</p>}
+                  </div>
+                )}
+                {couponDiscount > 0 && (
+                  <div className="flex justify-between text-sm text-green-600 mb-1">
+                    <span>خصم الكوبون</span>
+                    <span>- {formatCurrency(couponDiscount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold border-t pt-2">
                   <span className="text-foreground">الإجمالي</span>
-                  <span className="text-primary text-lg" data-testid="order-total">
-                    {formatCurrency(total)}
+                  <span className="text-orange-500 text-lg" data-testid="order-total">
+                    {formatCurrency(finalTotal)}
                   </span>
                 </div>
               </div>

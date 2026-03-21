@@ -285,7 +285,12 @@ export default function AdminCoupons() {
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto" dir="rtl">
+        <DialogContent
+          className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto"
+          dir="rtl"
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={() => setIsDialogOpen(false)}
+        >
           <DialogHeader>
             <DialogTitle>{editingCoupon ? 'تعديل الكوبون' : 'إضافة كوبون جديد'}</DialogTitle>
             <DialogDescription>أدخل تفاصيل الكوبون أدناه</DialogDescription>
