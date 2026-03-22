@@ -45,6 +45,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   })();
   const isSubAdmin = currentAdmin?.userType === 'sub_admin';
   const adminPermissions: string[] = currentAdmin?.permissions || [];
+  const isSetupMode = currentAdmin?.isSetupMode === true || localStorage.getItem('admin_token') === 'SETUP_MODE';
 
   // تحقق من الصلاحية - المدير الرئيسي يملك كل الصلاحيات
   const hasPermission = (perm: string) => !isSubAdmin || adminPermissions.includes(perm);
@@ -419,6 +420,19 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto">
+          {isSetupMode && (
+            <div className="bg-amber-500 text-white px-4 py-2.5 text-sm flex items-center justify-between gap-3 flex-wrap" dir="rtl">
+              <span className="font-medium">
+                ⚠️ أنت في وضع الإعداد الأولي — أنشئ حساب المدير الآن، وبعد تسجيل الخروج ستحتاج إلى كلمة مرور للدخول.
+              </span>
+              <button
+                onClick={handleLogout}
+                className="bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-3 py-1 rounded-lg transition-colors flex-shrink-0"
+              >
+                تسجيل الخروج
+              </button>
+            </div>
+          )}
           {children}
         </main>
       </div>
