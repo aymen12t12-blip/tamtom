@@ -939,6 +939,65 @@ router.put("/leave-requests/:id", async (req, res) => {
   }
 });
 
+router.get("/drivers", async (req, res) => {
+  try {
+    const drivers = await storage.getDrivers();
+    res.json(drivers);
+  } catch (error) {
+    console.error("Error fetching drivers:", error);
+    res.status(500).json({ error: "فشل في جلب بيانات السائقين" });
+  }
+});
+
+router.get("/drivers/:id/stats", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const driver = await storage.getDriver(id);
+    if (!driver) return res.status(404).json({ error: "السائق غير موجود" });
+    const orders = await storage.getOrders();
+    const driverOrders = orders.filter((o: any) => o.driverId === id);
+    const completedOrders = driverOrders.filter((o: any) => o.status === 'delivered');
+    const totalEarnings = completedOrders.reduce((sum: number, o: any) => sum + parseFloat(o.deliveryFee || '0'), 0);
+    res.json({
+      totalOrders: driverOrders.length,
+      completedOrders: completedOrders.length,
+      totalEarnings: totalEarnings.toFixed(2),
+      rating: driver.rating || 0,
+    });
+  } catch (error) {
+    console.error("Error fetching driver stats:", error);
+    res.status(500).json({ error: "فشل في جلب إحصائيات السائق" });
+  }
+});
+
+router.get("/stats", async (req, res) => {
+  try {
+    const orders = await storage.getOrders();
+    const drivers = await storage.getDrivers();
+    const categories = await storage.getCategories();
+    const restaurants = await storage.getRestaurants();
+    const users = await storage.getUsers();
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const todayOrders = orders.filter((o: any) => new Date(o.createdAt) >= today);
+    const totalRevenue = orders.filter((o: any) => o.status === 'delivered')
+      .reduce((sum: number, o: any) => sum + parseFloat(o.totalAmount || '0'), 0);
+    res.json({
+      totalOrders: orders.length,
+      todayOrders: todayOrders.length,
+      totalDrivers: drivers.length,
+      activeDrivers: drivers.filter((d: any) => d.isAvailable).length,
+      totalCategories: categories.length,
+      totalRestaurants: restaurants.length,
+      totalUsers: users.length,
+      totalRevenue: totalRevenue.toFixed(2),
+    });
+  } catch (error) {
+    console.error("Error fetching stats:", error);
+    res.status(500).json({ error: "فشل في جلب الإحصائيات" });
+  }
+});
+
 router.post("/drivers", async (req, res) => {
   try {
     console.log("Driver creation request data:", req.body);

@@ -15,7 +15,7 @@ const defaultUiSettings = [
   { key: "bottom_bar_enabled", value: "true", category: "navigation", description: "إظهار شريط التنقل السفلي" },
   // إعدادات عامة
   { key: "app_name", value: "طمطوم للتوصيل", category: "general", description: "اسم التطبيق" },
-  { key: "app_theme", value: "#e11d48", category: "general", description: "اللون الأساسي للتطبيق (hex)" },
+  { key: "app_theme", value: "#16a34a", category: "general", description: "اللون الأساسي للتطبيق (hex)" },
   { key: "delivery_fee_default", value: "5", category: "general", description: "رسوم التوصيل الافتراضية (ريال)" },
   { key: "minimum_order_default", value: "25", category: "general", description: "الحد الأدنى لقيمة الطلب (ريال)" },
   // إعدادات التوصيل
