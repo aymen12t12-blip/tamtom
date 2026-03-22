@@ -1,16 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Shield, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Shield, Eye, EyeOff, Settings } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isFirstSetup, setIsFirstSetup] = useState(false);
+  const [checkingSetup, setCheckingSetup] = useState(true);
+
+  // التحقق من وجود مديرين في قاعدة البيانات
+  useEffect(() => {
+    // إذا كان هناك token مسجل مسبقاً → انتقل للوحة التحكم
+    const existingToken = localStorage.getItem('admin_token');
+    if (existingToken) {
+      window.location.href = '/admin';
+      return;
+    }
+
+    fetch('/api/auth/setup-status')
+      .then(r => r.json())
+      .then((data: { adminExists: boolean }) => {
+        setIsFirstSetup(!data.adminExists);
+        setCheckingSetup(false);
+      })
+      .catch(() => {
+        setIsFirstSetup(false);
+        setCheckingSetup(false);
+      });
+  }, []);
+
+  // الدخول في وضع الإعداد الأولي (بدون تسجيل دخول)
+  const handleFirstSetupAccess = () => {
+    localStorage.setItem('admin_token', 'SETUP_MODE');
+    localStorage.setItem('admin_user', JSON.stringify({
+      id: 'setup',
+      name: 'إعداد أولي',
+      userType: 'admin',
+      isSetupMode: true,
+    }));
+    window.location.href = '/admin';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +88,17 @@ export default function AdminLoginPage() {
     if (error) setError('');
   };
 
+  if (checkingSetup) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-red-50">
+        <div className="text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-green-600 mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">جاري التحقق...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-red-50 p-4" dir="rtl">
       <div className="w-full max-w-md">
@@ -64,6 +110,33 @@ export default function AdminLoginPage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-1">لوحة التحكم</h1>
           <p className="text-gray-500 text-sm">نظام إدارة متجر طمطوم</p>
         </div>
+
+        {/* وضع الإعداد الأولي — عرض عند عدم وجود مديرين */}
+        {isFirstSetup && (
+          <Card className="shadow-xl border-0 bg-amber-50/90 backdrop-blur-sm mb-4 border border-amber-200">
+            <CardContent className="pt-6 pb-5">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Settings className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-amber-900 text-sm mb-1">الإعداد الأولي</h3>
+                  <p className="text-amber-800 text-xs leading-relaxed">
+                    لا يوجد حساب مدير مسجل بعد. يمكنك الدخول مرة واحدة لإنشاء حسابك،
+                    وبعد تسجيل الخروج لن يُسمح بالدخول إلا بكلمة مرور صحيحة.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={handleFirstSetupAccess}
+                className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg shadow-md"
+              >
+                <Settings className="ml-2 h-5 w-5" />
+                دخول الإعداد الأولي (مرة واحدة فقط)
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
           <CardHeader className="pb-4">
@@ -89,9 +162,8 @@ export default function AdminLoginPage() {
                   type="text"
                   value={formData.email}
                   onChange={handleInputChange}
-                  placeholder="admin@alsarie-one.com أو admin"
+                  placeholder="admin@example.com أو اسم المستخدم"
                   className="h-11 border-gray-200 focus:border-green-500 focus:ring-green-500 text-right"
-                  required
                   disabled={isSubmitting}
                   autoComplete="username"
                 />
@@ -110,7 +182,6 @@ export default function AdminLoginPage() {
                     onChange={handleInputChange}
                     placeholder="••••••••"
                     className="h-11 pl-10 border-gray-200 focus:border-green-500 focus:ring-green-500 text-right"
-                    required
                     disabled={isSubmitting}
                     autoComplete="current-password"
                   />
@@ -141,23 +212,6 @@ export default function AdminLoginPage() {
                 )}
               </Button>
             </form>
-
-            {(import.meta as any).env.DEV && (
-              <div className="mt-5 p-4 bg-green-50 rounded-lg border border-green-200">
-                <p className="text-sm text-green-800 font-semibold mb-2">بيانات الدخول الافتراضية:</p>
-                <div className="text-xs text-green-700 space-y-1">
-                  <p>البريد: <span className="font-mono font-bold">admin@alsarie-one.com</span></p>
-                  <p>كلمة المرور: <span className="font-mono font-bold">777146387</span></p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ email: 'admin@alsarie-one.com', password: '777146387' })}
-                  className="mt-2 text-xs text-green-600 underline hover:text-green-800"
-                >
-                  ملء البيانات تلقائياً
-                </button>
-              </div>
-            )}
           </CardContent>
         </Card>
 
