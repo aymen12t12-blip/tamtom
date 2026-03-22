@@ -142,26 +142,26 @@ export const TopBar: React.FC = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </form>
-          <div className="flex items-center gap-1 border-r pr-1">
+          <div className="flex items-center gap-1.5 border-r pr-2">
             <button onClick={() => setLocation('/favorites')} className="p-1 relative">
-              <Heart className="h-5 w-5 text-gray-600" />
+              <Heart className="h-6 w-6 text-gray-600" />
             </button>
             <button onClick={handleOpenCart} className="p-1 relative">
-              <ShoppingCart className="h-5 w-5 text-gray-600" />
+              <ShoppingCart className="h-6 w-6 text-gray-600" />
               {getItemCount() > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary text-white text-[8px] rounded-full h-4 w-4 flex items-center justify-center font-bold">
+                <span className="absolute -top-0.5 -right-0.5 bg-primary text-white text-[9px] rounded-full h-4 w-4 flex items-center justify-center font-bold">
                   {getItemCount()}
                 </span>
               )}
             </button>
             <button onClick={() => setLocation(user ? '/profile' : '/auth')} className="p-1">
-              <User className="h-5 w-5 text-gray-600" />
+              <User className="h-6 w-6 text-gray-600" />
             </button>
           </div>
         </div>
 
-        {/* Logo (Left in RTL - using shrink-0 to keep it visible) */}
-        <div className="shrink-0 scale-75 origin-left">
+        {/* Logo (Left in RTL) */}
+        <div className="shrink-0">
           <Logo />
         </div>
       </div>

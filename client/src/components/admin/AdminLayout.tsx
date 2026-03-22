@@ -168,19 +168,19 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
             <div>
               <h2 className="text-white font-bold text-base leading-tight">لوحة تحكم وادارة</h2>
-              <p className="text-orange-200 text-sm font-medium">متجر طمطوم</p>
+              <p className="text-green-100 text-sm font-medium">متجر طمطوم</p>
             </div>
           </div>
         </div>
       ) : (
-        <div className="p-5 border-b bg-gradient-to-br from-orange-500 to-orange-600 flex-shrink-0">
+        <div className="p-5 border-b flex-shrink-0" style={{ background: 'linear-gradient(135deg, #16a34a 0%, #dc2626 100%)' }}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
               <BarChart3 className="h-6 w-6 text-white" />
             </div>
             <div>
               <h2 className="text-base font-bold text-white leading-tight">لوحة تحكم وادارة</h2>
-              <p className="text-orange-100 text-xs">متجر طمطوم</p>
+              <p className="text-green-100 text-xs">متجر طمطوم</p>
             </div>
           </div>
         </div>
@@ -188,7 +188,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
       <div className="px-4 py-3 border-b bg-gray-50 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
             <span className="text-white text-sm font-bold">م</span>
           </div>
           <div className="min-w-0">
@@ -215,8 +215,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     onClick={() => handleNavigation(item.path)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-right transition-all duration-150 ${
                       isActive
-                        ? 'bg-orange-500 text-white shadow-md shadow-orange-200'
-                        : 'text-gray-700 hover:bg-orange-50 hover:text-orange-600'
+                        ? 'bg-green-600 text-white shadow-md shadow-green-200'
+                        : 'text-gray-700 hover:bg-green-50 hover:text-green-700'
                     }`}
                   >
                     <Icon className={`h-4 w-4 flex-shrink-0 ${isActive ? 'text-white' : 'text-gray-400'}`} />
@@ -263,11 +263,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           pendingOrders.slice(0, 6).map((order: any) => (
             <div
               key={order.id}
-              className="p-3 border-b hover:bg-orange-50 cursor-pointer transition-colors"
+              className="p-3 border-b hover:bg-green-50 cursor-pointer transition-colors"
               onClick={() => { handleNavigation('/admin/orders'); setShowNotifications(false); }}
             >
               <div className="flex items-start gap-2">
-                <div className="w-2 h-2 bg-orange-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                <div className="w-2 h-2 bg-green-600 rounded-full mt-1.5 flex-shrink-0"></div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900">طلب جديد #{order.orderNumber || order.id?.slice(0, 8)}</p>
                   <p className="text-xs text-gray-500 truncate">{order.customerName || 'عميل'} - {order.totalAmount} ر.س</p>
@@ -288,7 +288,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           <Button 
             variant="ghost" 
             size="sm" 
-            className="w-full text-orange-600 hover:bg-orange-50 text-xs"
+            className="w-full text-green-600 hover:bg-green-50 text-xs"
             onClick={() => { handleNavigation('/admin/orders'); setShowNotifications(false); }}
           >
             عرض جميع الطلبات ({pendingOrders.length})
@@ -343,7 +343,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
               onClick={() => handleNavigation('/admin/profile')}
             >
-              <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
                 <span className="text-white text-sm font-bold">م</span>
               </div>
               <span className="text-sm font-medium text-gray-700">مدير النظام</span>
@@ -359,7 +359,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             ) : (
               <div>
                 <p className="font-bold text-gray-900 text-sm leading-tight">لوحة تحكم وادارة</p>
-                <p className="text-xs text-orange-500 font-medium">متجر طمطوم</p>
+                <p className="text-xs text-green-600 font-medium">متجر طمطوم</p>
               </div>
             )}
           </div>
@@ -389,7 +389,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                       pendingOrders.slice(0, 5).map((order: any) => (
                         <div
                           key={order.id}
-                          className="p-3 border-b hover:bg-orange-50 cursor-pointer"
+                          className="p-3 border-b hover:bg-green-50 cursor-pointer"
                           onClick={() => { handleNavigation('/admin/orders'); setShowNotifications(false); }}
                         >
                           <p className="text-sm font-semibold">طلب جديد #{order.orderNumber || order.id?.slice(0,8)}</p>
