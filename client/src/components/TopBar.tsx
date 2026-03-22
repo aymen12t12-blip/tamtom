@@ -79,7 +79,7 @@ export const TopBar: React.FC = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             <button type="submit" className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors">
-              <Search className="h-5 w-5" />
+              <Search className="h-6 w-6" />
             </button>
           </form>
         </div>
@@ -91,7 +91,7 @@ export const TopBar: React.FC = () => {
             className="p-2 hover:bg-gray-100 rounded-full transition-colors relative"
             title={t('account')}
           >
-            <User className="h-6 w-6 text-gray-700" />
+            <User className="h-7 w-7 text-gray-700" />
           </button>
           
           <button 
@@ -99,7 +99,7 @@ export const TopBar: React.FC = () => {
             className="p-2 hover:bg-gray-100 rounded-full transition-colors relative"
             title={t('favorites')}
           >
-            <Heart className="h-6 w-6 text-gray-700" />
+            <Heart className="h-7 w-7 text-gray-700" />
           </button>
 
           <button 
@@ -108,7 +108,7 @@ export const TopBar: React.FC = () => {
             title={t('cart')}
           >
             <div className="relative">
-              <ShoppingCart className="h-6 w-6 text-gray-700" />
+              <ShoppingCart className="h-7 w-7 text-gray-700" />
               {getItemCount() > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 bg-[#d32f2f] text-white text-[10px] rounded-full h-5 w-5 flex items-center justify-center font-bold border-2 border-white">
                   {getItemCount()}
@@ -125,18 +125,18 @@ export const TopBar: React.FC = () => {
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-10 w-10 shrink-0" 
+          className="h-12 w-12 shrink-0" 
           onClick={() => document.getElementById('sidebar-trigger')?.click()}
         >
-          <MenuIcon className="h-6 w-6 text-gray-700" />
+          <MenuIcon className="h-8 w-8 text-gray-700" />
         </Button>
 
         {/* Search & Icons Group */}
         <div className="flex-1 flex items-center gap-2 bg-gray-100 rounded-full px-3 py-1">
-          <Search className="h-4 w-4 text-gray-400 shrink-0" />
+          <Search className="h-5 w-5 text-gray-400 shrink-0" />
           <form onSubmit={handleSearch} className="flex-1">
             <input 
-              className="w-full bg-transparent border-none focus:ring-0 text-xs font-bold h-8"
+              className="w-full bg-transparent border-none focus:ring-0 text-xs font-bold h-10"
               placeholder={t('search_placeholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -144,18 +144,18 @@ export const TopBar: React.FC = () => {
           </form>
           <div className="flex items-center gap-1.5 border-r pr-2">
             <button onClick={() => setLocation('/favorites')} className="p-1 relative">
-              <Heart className="h-6 w-6 text-gray-600" />
+              <Heart className="h-7 w-7 text-gray-600" />
             </button>
             <button onClick={handleOpenCart} className="p-1 relative">
-              <ShoppingCart className="h-6 w-6 text-gray-600" />
+              <ShoppingCart className="h-7 w-7 text-gray-600" />
               {getItemCount() > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-primary text-white text-[9px] rounded-full h-4 w-4 flex items-center justify-center font-bold">
+                <span className="absolute -top-0.5 -right-0.5 bg-primary text-white text-[10px] rounded-full h-5 w-5 flex items-center justify-center font-bold">
                   {getItemCount()}
                 </span>
               )}
             </button>
             <button onClick={() => setLocation(user ? '/profile' : '/auth')} className="p-1">
-              <User className="h-6 w-6 text-gray-600" />
+              <User className="h-7 w-7 text-gray-600" />
             </button>
           </div>
         </div>
