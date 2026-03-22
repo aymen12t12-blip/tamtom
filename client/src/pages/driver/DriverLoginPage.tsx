@@ -53,12 +53,9 @@ export default function DriverLoginPage() {
       const result = await response.json();
       
       if (result.success) {
-        // حفظ بيانات السائق في localStorage
         localStorage.setItem('driver_token', result.token);
         localStorage.setItem('driver_user', JSON.stringify(result.user));
-        
-        // إعادة توجيه إلى تطبيق السائق
-        setLocation('/driver');
+        window.location.href = '/driver';
       } else {
         setError(result.message || 'فشل في تسجيل الدخول');
       }
