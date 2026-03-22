@@ -277,11 +277,11 @@ export default function AdminUiSettings() {
           {/* Branding */}
           <SectionCard sectionKey="branding" title="الهوية البصرية والشعار" icon={ImageIcon} color="text-purple-600">
             <SettingRow label="اسم التطبيق" settingKey="app_name" placeholder="طمطوم" description="الاسم الذي يظهر في الشريط العلوي" />
-            <SettingRow label="اللون الأساسي (hex)" settingKey="app_theme" placeholder="#f97316" description="لون الموضوع الرئيسي" />
+            <SettingRow label="إصدار التطبيق" settingKey="app_version" placeholder="1.0.0" description="رقم إصدار التطبيق الظاهر في القائمة الجانبية" />
+            <SettingRow label="اللون الأساسي (hex)" settingKey="app_theme" placeholder="#16a34a" description="لون الموضوع الرئيسي" />
             <SettingRow label="شعار الشريط العلوي" settingKey="header_logo_url" type="image" description="الشعار الصغير في أعلى التطبيق" />
-            <SettingRow label="صورة خلفية القائمة الجانبية" settingKey="sidebar_image_url" type="image" description="الصورة في أعلى القائمة الجانبية" />
-            <SettingRow label="إظهار شعار القائمة الجانبية" settingKey="show_sidebar_logo" type="boolean" description="إظهار أو إخفاء الشعار في القائمة الجانبية" />
-            <SettingRow label="شعار الشريط العلوي الثانوي" settingKey="top_bar_logo_url" type="image" description="شعار ثانوي في الشريط العلوي" />
+            <SettingRow label="شعار القائمة الجانبية" settingKey="sidebar_logo_url" type="image" description="شعار خاص بالقائمة الجانبية (يستخدم شعار الهيدر إذا تُرك فارغاً)" />
+            <SettingRow label="الشعار النصي للقائمة الجانبية" settingKey="sidebar_tagline" placeholder="كل ما تحتاجونه في مكان واحد" description="النص الظاهر أسفل الشعار في القائمة الجانبية" />
             <SettingRow label="تأخير ظهور الشعار (ثواني)" settingKey="logo_animation_duration" placeholder="2.5" description="مدة الانتظار قبل ظهور الشعار" />
           </SectionCard>
 
