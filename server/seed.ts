@@ -31,7 +31,10 @@ const defaultUiSettings = [
   // إعدادات الهوية البصرية
   { key: "header_logo_url", value: "", category: "branding", description: "شعار الشريط العلوي" },
   { key: "sidebar_image_url", value: "", category: "branding", description: "صورة خلفية القائمة الجانبية" },
+  { key: "sidebar_logo_url", value: "", category: "branding", description: "شعار القائمة الجانبية (إذا كان مختلفاً عن شعار الهيدر)" },
   { key: "show_sidebar_logo", value: "true", category: "branding", description: "إظهار شعار القائمة الجانبية" },
+  { key: "sidebar_tagline", value: "كل ما تحتاجونه في مكان واحد", category: "branding", description: "الشعار النصي في القائمة الجانبية" },
+  { key: "app_version", value: "1.0.0", category: "general", description: "إصدار التطبيق" },
   { key: "top_bar_logo_url", value: "", category: "branding", description: "شعار الشريط العلوي الثانوي" },
   { key: "logo_animation_duration", value: "2.5", category: "branding", description: "مدة ظهور الشعار (ثواني)" },
   // إعدادات شاشة الترحيب
