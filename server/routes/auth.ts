@@ -3,9 +3,63 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { dbStorage } from '../db';
 import { adminUsers, drivers, users, insertUserSchema } from '@shared/schema';
-import { eq, or } from 'drizzle-orm';
+import { eq, or, sql } from 'drizzle-orm';
 
 const router = express.Router();
+
+// فحص حالة الإعداد الأولي - هل توجد حسابات في قاعدة البيانات؟
+router.get('/setup-status', async (req, res) => {
+  try {
+    const [adminCount] = await dbStorage.db.select({ count: sql<number>`count(*)::int` }).from(adminUsers);
+    const [driverCount] = await dbStorage.db.select({ count: sql<number>`count(*)::int` }).from(drivers);
+    const [userCount] = await dbStorage.db.select({ count: sql<number>`count(*)::int` }).from(users);
+
+    res.json({
+      adminExists: (adminCount?.count ?? 0) > 0,
+      driverExists: (driverCount?.count ?? 0) > 0,
+      userExists: (userCount?.count ?? 0) > 0,
+    });
+  } catch (error) {
+    console.error('خطأ في فحص حالة الإعداد:', error);
+    res.json({ adminExists: true, driverExists: true, userExists: true });
+  }
+});
+
+// دالة مساعدة للتحقق من كلمة المرور - تدعم كل من كلمات المرور المشفرة والعادية
+// وتقوم بترقية كلمات المرور العادية تلقائياً إلى مشفرة
+async function verifyPassword(inputPassword: string, storedPassword: string): Promise<boolean> {
+  if (!inputPassword || !storedPassword) return false;
+  
+  // التحقق إذا كانت كلمة المرور مشفرة بـ bcrypt
+  const isBcryptHash = storedPassword.startsWith('$2b$') || storedPassword.startsWith('$2a$') || storedPassword.startsWith('$2y$');
+  
+  if (isBcryptHash) {
+    // مقارنة مع الهاش
+    return await bcrypt.compare(inputPassword, storedPassword);
+  } else {
+    // مقارنة كلمة مرور عادية (غير مشفرة)
+    return inputPassword === storedPassword;
+  }
+}
+
+// دالة لتشفير كلمة المرور وتحديثها في قاعدة البيانات إذا كانت غير مشفرة
+async function upgradePasswordIfNeeded(
+  storedPassword: string,
+  inputPassword: string,
+  updateFn: (hashedPassword: string) => Promise<void>
+): Promise<void> {
+  const isBcryptHash = storedPassword.startsWith('$2b$') || storedPassword.startsWith('$2a$') || storedPassword.startsWith('$2y$');
+  if (!isBcryptHash) {
+    try {
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(inputPassword, salt);
+      await updateFn(hashedPassword);
+      console.log('🔒 تم ترقية كلمة المرور إلى هاش bcrypt تلقائياً');
+    } catch (err) {
+      console.error('⚠️ فشل في ترقية كلمة المرور:', err);
+    }
+  }
+}
 
 // تسجيل الدخول للعملاء
 router.post('/login', async (req, res) => {
@@ -21,7 +75,7 @@ router.post('/login', async (req, res) => {
 
     console.log('🔐 محاولة تسجيل دخول عميل:', identifier);
 
-    // البحث عن العميل في قاعدة البيانات (باسم المستخدم أو الهاتف)
+    // البحث عن العميل في قاعدة البيانات (باسم المستخدم أو الهاتف أو البريد)
     const userResult = await dbStorage.db
       .select()
       .from(users)
@@ -51,8 +105,8 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // التحقق من كلمة المرور باستخدام bcrypt
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    // التحقق من كلمة المرور (يدعم المشفر والعادي)
+    const isPasswordValid = await verifyPassword(password, user.password);
 
     if (!isPasswordValid) {
       return res.status(401).json({
@@ -61,9 +115,12 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // استخدام معرف المستخدم كرمز مؤقت للمصادقة للبقاء مسجلاً للدخول
-    const token = user.id;
+    // ترقية كلمة المرور تلقائياً إذا كانت غير مشفرة
+    await upgradePasswordIfNeeded(user.password, password, async (hashedPwd) => {
+      await dbStorage.db.update(users).set({ password: hashedPwd }).where(eq(users.id, user.id));
+    });
 
+    const token = user.id;
     console.log('🎉 تم تسجيل الدخول بنجاح للعميل:', user.name);
     
     res.json({
@@ -102,7 +159,7 @@ router.post('/validate', async (req, res) => {
 
     const token = authHeader.split(' ')[1];
     
-    // البحث عن المستخدم باستخدام المعرف (الذي نستخدمه كرمز حالياً)
+    // البحث عن المستخدم باستخدام المعرف
     const userResult = await dbStorage.db
       .select()
       .from(users)
@@ -201,11 +258,10 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // تشفير كلمة المرور
+    // تشفير كلمة المرور دائماً عند التسجيل
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(validatedData.password, salt);
 
-    // إنشاء المستخدم
     const [newUser] = await dbStorage.db
       .insert(users)
       .values({ ...validatedData, password: hashedPassword })
@@ -279,8 +335,8 @@ router.post('/admin/login', async (req, res) => {
       });
     }
 
-    // التحقق من كلمة المرور باستخدام bcrypt فقط
-    const isPasswordValid = await bcrypt.compare(password, admin.password);
+    // التحقق من كلمة المرور (يدعم المشفر والعادي)
+    const isPasswordValid = await verifyPassword(password, admin.password);
 
     if (!isPasswordValid) {
       console.log('❌ كلمة المرور غير صحيحة للمدير:', email);
@@ -290,9 +346,12 @@ router.post('/admin/login', async (req, res) => {
       });
     }
 
-    // استخدام معرف المدير كرمز مؤقت للمصادقة للبقاء مسجلاً للدخول
-    const token = admin.id;
+    // ترقية كلمة المرور تلقائياً إذا كانت غير مشفرة
+    await upgradePasswordIfNeeded(admin.password, password, async (hashedPwd) => {
+      await dbStorage.db.update(adminUsers).set({ password: hashedPwd }).where(eq(adminUsers.id, admin.id));
+    });
 
+    const token = admin.id;
     console.log('🎉 تم تسجيل الدخول بنجاح للمدير:', admin.name);
     
     let permissions: string[] = [];
@@ -361,8 +420,8 @@ router.post('/driver/login', async (req, res) => {
       });
     }
 
-    // التحقق من كلمة المرور باستخدام bcrypt
-    const isPasswordValid = await bcrypt.compare(password, driver.password);
+    // التحقق من كلمة المرور (يدعم المشفر والعادي)
+    const isPasswordValid = await verifyPassword(password, driver.password);
 
     if (!isPasswordValid) {
       return res.status(401).json({
@@ -371,9 +430,12 @@ router.post('/driver/login', async (req, res) => {
       });
     }
 
-    // استخدام معرف السائق كرمز مؤقت للمصادقة للبقاء مسجلاً للدخول
-    const token = driver.id;
+    // ترقية كلمة المرور تلقائياً إذا كانت غير مشفرة
+    await upgradePasswordIfNeeded(driver.password, password, async (hashedPwd) => {
+      await dbStorage.db.update(drivers).set({ password: hashedPwd }).where(eq(drivers.id, driver.id));
+    });
 
+    const token = driver.id;
     console.log('🎉 تم تسجيل الدخول بنجاح للسائق:', driver.name);
     
     res.json({

@@ -16,7 +16,7 @@ import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import DriverLoginPage from "./pages/driver/DriverLoginPage";
 import AdminApp from "./pages/AdminApp";
 import { DriverDashboard } from "./pages/DriverDashboard";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Home from "./pages/Home";
 import Restaurant from "./pages/Restaurant";
 import Cart from "./pages/Cart";
@@ -29,58 +29,139 @@ import Settings from "./pages/Settings";
 import Privacy from "./pages/Privacy";
 import SearchPage from "./pages/SearchPage";
 import CustomerAuthPage from "./pages/CustomerAuthPage";
-// Admin pages removed - now handled separately
 import NotFound from "@/pages/not-found";
 
+// شاشة التحميل
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+        <p className="text-gray-500 text-sm">جاري التحميل...</p>
+      </div>
+    </div>
+  );
+}
+
+// حارس مسار لوحة التحكم: يسمح بالدخول إذا كان هناك token أو لا يوجد مديرون في قاعدة البيانات
+function AdminGuard() {
+  const [status, setStatus] = useState<'loading' | 'allowed' | 'need-login'>('loading');
+
+  useEffect(() => {
+    const token = localStorage.getItem('admin_token');
+    if (token) {
+      setStatus('allowed');
+      return;
+    }
+    // لا يوجد token — تحقق إذا كان هناك مديرون في قاعدة البيانات
+    fetch('/api/auth/setup-status')
+      .then(r => r.json())
+      .then((data: { adminExists: boolean }) => {
+        if (!data.adminExists) {
+          // لا يوجد مديرون → إعداد أولي → منح وصول مؤقت
+          localStorage.setItem('admin_token', 'SETUP_MODE');
+          localStorage.setItem('admin_user', JSON.stringify({
+            id: 'setup',
+            name: 'إعداد أولي',
+            userType: 'admin',
+            isSetupMode: true,
+          }));
+          setStatus('allowed');
+        } else {
+          setStatus('need-login');
+        }
+      })
+      .catch(() => setStatus('need-login'));
+  }, []);
+
+  if (status === 'loading') return <LoadingScreen />;
+  if (status === 'need-login') {
+    window.location.href = '/admin-login';
+    return null;
+  }
+  return <AdminApp onLogout={() => {
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_user');
+    window.location.href = '/admin-login';
+  }} />;
+}
+
+// حارس مسار تطبيق السائق: يسمح بالدخول إذا كان هناك token أو لا يوجد سائقون في قاعدة البيانات
+function DriverGuard() {
+  const [status, setStatus] = useState<'loading' | 'allowed' | 'need-login'>('loading');
+
+  useEffect(() => {
+    const token = localStorage.getItem('driver_token');
+    const driverUser = localStorage.getItem('driver_user');
+    if (token && driverUser) {
+      setStatus('allowed');
+      return;
+    }
+    // لا يوجد token — تحقق إذا كان هناك سائقون في قاعدة البيانات
+    fetch('/api/auth/setup-status')
+      .then(r => r.json())
+      .then((data: { driverExists: boolean }) => {
+        if (!data.driverExists) {
+          // لا يوجد سائقون → إعداد أولي → منح وصول مؤقت
+          localStorage.setItem('driver_token', 'SETUP_MODE');
+          localStorage.setItem('driver_user', JSON.stringify({
+            id: 'setup',
+            name: 'إعداد أولي',
+            phone: '',
+            userType: 'driver',
+            isSetupMode: true,
+          }));
+          setStatus('allowed');
+        } else {
+          setStatus('need-login');
+        }
+      })
+      .catch(() => setStatus('need-login'));
+  }, []);
+
+  if (status === 'loading') return <LoadingScreen />;
+  if (status === 'need-login') {
+    window.location.href = '/driver-login';
+    return null;
+  }
+  return <DriverDashboard onLogout={() => {
+    localStorage.removeItem('driver_token');
+    localStorage.removeItem('driver_user');
+    window.location.href = '/driver-login';
+  }} />;
+}
+
 function MainApp() {
-  // const { userType, loading } = useAuth(); // تم إزالة نظام المصادقة
   const { location } = useUserLocation();
   const [showLocationModal, setShowLocationModal] = useState(true);
+  const pathname = window.location.pathname;
 
-  // تم إزالة loading state ومراجع المصادقة
-
-  // Handle login pages first (without layout)
-  if (window.location.pathname === '/admin-login') {
+  // صفحات تسجيل الدخول — بدون تخطيط
+  if (pathname === '/admin-login') {
     return <AdminLoginPage />;
   }
-  
-  if (window.location.pathname === '/driver-login') {
+
+  if (pathname === '/driver-login') {
     return <DriverLoginPage />;
   }
 
-  // Handle admin routes (direct access without authentication)
-  if (window.location.pathname.startsWith('/admin')) {
-    return <AdminApp onLogout={() => window.location.href = '/'} />;
+  // مسارات لوحة التحكم — مع حارس المصادقة
+  if (pathname.startsWith('/admin')) {
+    return <AdminGuard />;
   }
 
-  // Handle driver routes (direct access without authentication)  
-  if (window.location.pathname.startsWith('/driver')) {
-    // التحقق من تسجيل الدخول للسائق
-    const driverToken = localStorage.getItem('driver_token');
-    const driverUser = localStorage.getItem('driver_user');
-    
-    if (!driverToken || !driverUser) {
-      // إعادة توجيه إلى صفحة تسجيل الدخول
-      window.location.href = '/driver-login';
-      return null;
-    }
-    
-    return <DriverDashboard onLogout={() => {
-      localStorage.removeItem('driver_token');
-      localStorage.removeItem('driver_user');
-      window.location.href = '/';
-    }} />;
+  // مسارات تطبيق السائق — مع حارس المصادقة
+  if (pathname.startsWith('/driver')) {
+    return <DriverGuard />;
   }
 
-  // Remove admin/driver routes from customer app routing
-
-  // Default customer app
+  // تطبيق العميل الافتراضي
   return (
     <>
       <Layout>
         <Router />
       </Layout>
-      
+
       {showLocationModal && !location.hasPermission && (
         <LocationPermissionModal
           onPermissionGranted={(position) => {
@@ -98,7 +179,6 @@ function MainApp() {
 }
 
 function Router() {
-  // Check UiSettings for page visibility
   const { isFeatureEnabled } = useUiSettings();
   const showOrdersPage = isFeatureEnabled('show_orders_page');
   const showTrackOrdersPage = isFeatureEnabled('show_track_orders_page');
@@ -117,11 +197,8 @@ function Router() {
       {showTrackOrdersPage && <Route path="/track-orders" component={TrackOrdersPage} />}
       <Route path="/settings" component={Settings} />
       <Route path="/privacy" component={Privacy} />
-      
-      {/* Authentication Routes */}
       <Route path="/admin-login" component={AdminLoginPage} />
       <Route path="/driver-login" component={DriverLoginPage} />
-      
       <Route component={NotFound} />
     </Switch>
   );
