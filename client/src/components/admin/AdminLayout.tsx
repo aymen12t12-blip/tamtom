@@ -47,8 +47,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const adminPermissions: string[] = currentAdmin?.permissions || [];
   const isSetupMode = currentAdmin?.isSetupMode === true || localStorage.getItem('admin_token') === 'SETUP_MODE';
 
-  // تحقق من الصلاحية - المدير الرئيسي يملك كل الصلاحيات
-  const hasPermission = (perm: string) => !isSubAdmin || adminPermissions.includes(perm);
+  // تحقق من الصلاحية - المدير الرئيسي يملك كل الصلاحيات، null = دائماً مرئي
+  const hasPermission = (perm: string | null) => perm === null || !isSubAdmin || adminPermissions.includes(perm);
 
   const { data: uiSettings } = useQuery<UiSettings[]>({
     queryKey: ['/api/admin/ui-settings'],
@@ -79,56 +79,62 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     {
       key: 'main',
       label: 'الرئيسية',
+      permission: null,
       items: [
-        { icon: BarChart3, label: 'لوحة التحكم', path: '/admin', description: 'نظرة عامة على النظام' },
-        { icon: ShoppingBag, label: 'الطلبات', path: '/admin/orders', description: 'إدارة جميع الطلبات', badge: pendingOrdersCount },
+        { icon: BarChart3, label: 'لوحة التحكم', path: '/admin', description: 'نظرة عامة على النظام', permission: null },
+        { icon: ShoppingBag, label: 'الطلبات', path: '/admin/orders', description: 'إدارة جميع الطلبات', badge: pendingOrdersCount, permission: 'manage_orders' },
       ]
     },
     {
       key: 'store',
       label: 'المتجر',
+      permission: null,
       items: [
-        { icon: Tag, label: 'التصنيفات', path: '/admin/categories', description: 'إدارة فئات المتاجر' },
-        { icon: Package, label: 'المنتجات', path: '/admin/menu-items', description: 'إدارة المنتجات والأصناف' },
-        { icon: Percent, label: 'العروض', path: '/admin/offers', description: 'إدارة العروض الخاصة' },
-        { icon: Tag, label: 'الكوبونات', path: '/admin/coupons', description: 'إدارة كوبونات الخصم' },
-        { icon: CreditCard, label: 'طرق الدفع', path: '/admin/payment-methods', description: 'إدارة طرق الدفع' },
+        { icon: Tag, label: 'التصنيفات', path: '/admin/categories', description: 'إدارة فئات المتاجر', permission: 'manage_categories' },
+        { icon: Package, label: 'المنتجات', path: '/admin/menu-items', description: 'إدارة المنتجات والأصناف', permission: 'manage_menu' },
+        { icon: Percent, label: 'العروض', path: '/admin/offers', description: 'إدارة العروض الخاصة', permission: 'manage_menu' },
+        { icon: Tag, label: 'الكوبونات', path: '/admin/coupons', description: 'إدارة كوبونات الخصم', permission: 'manage_coupons' },
+        { icon: CreditCard, label: 'طرق الدفع', path: '/admin/payment-methods', description: 'إدارة طرق الدفع', permission: 'manage_settings' },
       ]
     },
     {
       key: 'drivers',
       label: 'السائقون',
+      permission: null,
       items: [
-        { icon: Truck, label: 'السائقين', path: '/admin/drivers', description: 'إدارة السائقين' },
-        { icon: DollarSign, label: 'رسوم التوصيل', path: '/admin/delivery-fees', description: 'مناطق التوصيل والرسوم' },
-        { icon: Wallet, label: 'محافظ السائقين', path: '/admin/wallet', description: 'محافظ ومدفوعات السائقين' },
+        { icon: Truck, label: 'السائقين', path: '/admin/drivers', description: 'إدارة السائقين', permission: 'manage_drivers' },
+        { icon: DollarSign, label: 'رسوم التوصيل', path: '/admin/delivery-fees', description: 'مناطق التوصيل والرسوم', permission: 'manage_drivers' },
+        { icon: Wallet, label: 'محافظ السائقين', path: '/admin/wallet', description: 'محافظ ومدفوعات السائقين', permission: 'manage_drivers' },
       ]
     },
     {
       key: 'reports',
       label: 'التقارير',
+      permission: null,
       items: [
-        { icon: DollarSign, label: 'التقارير المالية', path: '/admin/financial-reports', description: 'الأرباح والإيرادات' },
-        { icon: BarChart3, label: 'التقارير التفصيلية', path: '/admin/detailed-reports', description: 'تحليلات المنتجات' },
-        { icon: Star, label: 'التقييمات', path: '/admin/ratings', description: 'تقييمات المستخدمين' },
+        { icon: DollarSign, label: 'التقارير المالية', path: '/admin/financial-reports', description: 'الأرباح والإيرادات', permission: 'view_reports' },
+        { icon: BarChart3, label: 'التقارير التفصيلية', path: '/admin/detailed-reports', description: 'تحليلات المنتجات', permission: 'view_reports' },
+        { icon: Star, label: 'التقييمات', path: '/admin/ratings', description: 'تقييمات المستخدمين', permission: 'view_reports' },
       ]
     },
     {
       key: 'management',
       label: 'الإدارة',
+      permission: null,
       items: [
-        { icon: Users, label: 'إدارة الموارد البشرية', path: '/admin/hr-management', description: 'الموظفين والرواتب' },
-        { icon: Users, label: 'المستخدمين', path: '/admin/users', description: 'إدارة المستخدمين' },
-        { icon: Shield, label: 'الأمن والخصوصية', path: '/admin/security', description: 'سجلات الوصول' },
+        { icon: Users, label: 'إدارة الموارد البشرية', path: '/admin/hr-management', description: 'الموظفين والرواتب', permission: 'manage_customers' },
+        { icon: Users, label: 'المستخدمين', path: '/admin/users', description: 'إدارة المستخدمين', permission: 'manage_customers' },
+        { icon: Shield, label: 'الأمن والخصوصية', path: '/admin/security', description: 'سجلات الوصول', permission: 'manage_settings' },
       ]
     },
     {
       key: 'settings',
       label: 'الإعدادات',
+      permission: null,
       items: [
-        { icon: Smartphone, label: 'إدارة الواجهات', path: '/admin/ui-settings', description: 'تطبيق العميل والسائق' },
-        { icon: Database, label: 'النسخ الاحتياطي', path: '/admin/backup', description: 'حفظ واستعادة البيانات' },
-        { icon: User, label: 'الملف الشخصي', path: '/admin/profile', description: 'إدارة معلومات الحساب' },
+        { icon: Smartphone, label: 'إدارة الواجهات', path: '/admin/ui-settings', description: 'تطبيق العميل والسائق', permission: 'manage_settings' },
+        { icon: Database, label: 'النسخ الاحتياطي', path: '/admin/backup', description: 'حفظ واستعادة البيانات', permission: 'manage_settings' },
+        { icon: User, label: 'الملف الشخصي', path: '/admin/profile', description: 'إدارة معلومات الحساب', permission: null },
       ]
     },
   ];
@@ -190,21 +196,30 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       <div className="px-4 py-3 border-b bg-gray-50 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-sm font-bold">م</span>
+            <span className="text-white text-sm font-bold">
+              {currentAdmin?.name ? currentAdmin.name.charAt(0) : 'م'}
+            </span>
           </div>
           <div className="min-w-0">
-            <p className="font-semibold text-gray-900 text-sm truncate">مدير النظام</p>
-            <p className="text-xs text-gray-500">صلاحيات كاملة</p>
+            <p className="font-semibold text-gray-900 text-sm truncate">
+              {currentAdmin?.name || 'مدير النظام'}
+            </p>
+            <p className="text-xs text-gray-500">
+              {isSubAdmin ? 'مشرف' : 'صلاحيات كاملة'}
+            </p>
           </div>
         </div>
       </div>
 
       <nav className="flex-1 p-3 overflow-y-auto">
-        {menuGroups.map((group) => (
+        {menuGroups.map((group) => {
+          const visibleItems = group.items.filter(item => hasPermission((item as any).permission));
+          if (visibleItems.length === 0) return null;
+          return (
           <div key={group.key} className="mb-4">
             <p className="text-xs font-bold text-gray-400 uppercase px-2 mb-1.5 tracking-wider">{group.label}</p>
             <div className="space-y-0.5">
-              {group.items.map((item) => {
+              {visibleItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = location === item.path || 
                   (item.path !== '/admin' && location.startsWith(item.path));
@@ -234,7 +249,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               })}
             </div>
           </div>
-        ))}
+          );
+        })}
       </nav>
 
       <div className="p-3 border-t flex-shrink-0">
@@ -345,9 +361,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               onClick={() => handleNavigation('/admin/profile')}
             >
               <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-bold">م</span>
+                <span className="text-white text-sm font-bold">
+                  {currentAdmin?.name ? currentAdmin.name.charAt(0) : 'م'}
+                </span>
               </div>
-              <span className="text-sm font-medium text-gray-700">مدير النظام</span>
+              <span className="text-sm font-medium text-gray-700">
+                {currentAdmin?.name || 'مدير النظام'}
+              </span>
             </button>
           </div>
         </header>
