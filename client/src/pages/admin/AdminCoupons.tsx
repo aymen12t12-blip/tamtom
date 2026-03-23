@@ -122,7 +122,7 @@ export default function AdminCoupons() {
       perUserLimit: formData.perUserLimit ? parseInt(formData.perUserLimit) : 1,
       startDate: formData.startDate ? new Date(formData.startDate).toISOString() : null,
       endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null,
-      categoryId: formData.categoryId ? parseInt(formData.categoryId) : null,
+      categoryId: formData.categoryId || null,
     };
     couponMutation.mutate(submitData);
   };

@@ -69,7 +69,9 @@ export function UiSettingsProvider({ children }: { children: React.ReactNode }) 
   };
 
   const isFeatureEnabled = (key: string) => {
-    return getSetting(key) === 'true';
+    const value = getSetting(key);
+    if (value === '') return true;
+    return value !== 'false';
   };
 
   const refreshSettings = async () => {

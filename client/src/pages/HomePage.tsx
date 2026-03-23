@@ -132,7 +132,7 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-        </section>
+        </section>}
 
         {/* Restaurant Section with Tab Navigation */}
         <section>

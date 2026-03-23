@@ -290,3 +290,10 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ onLogout }) =>
   }
 
   const { availableOrders = [], currentOrders = [], pendingOrders = [], stats = {} } = dashboardData || {};
+
+  return (
+    <div className="flex items-center justify-center h-screen">
+      <RefreshCw className="h-8 w-8 animate-spin text-green-600" />
+    </div>
+  );
+};

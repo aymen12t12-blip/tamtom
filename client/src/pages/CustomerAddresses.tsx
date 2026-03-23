@@ -237,6 +237,7 @@ export default function CustomerAddresses({ userId }: CustomerAddressesProps) {
                       </Button>
                     </div>
                   </div>
+                </div>
                 </CardContent>
               </Card>
           ))}
@@ -274,6 +275,7 @@ export default function CustomerAddresses({ userId }: CustomerAddressesProps) {
                     </Button>
                   ))}
                 </div>
+              </div>
 
               <div>
                 <Label htmlFor="title">عنوان مختصر</Label>
@@ -317,6 +319,7 @@ export default function CustomerAddresses({ userId }: CustomerAddressesProps) {
                 />
                 <Label htmlFor="isDefault">تعيين كعنوان افتراضي</Label>
               </div>
+            </div>
 
             <DialogFooter className="mt-4">
               <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>

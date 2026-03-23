@@ -24,9 +24,13 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const { isAuthenticated } = useAuth();
   const [currentOfferIndex, setCurrentOfferIndex] = useState(0);
-  const { getSetting } = useUiSettings();
+  const { getSetting, isFeatureEnabled } = useUiSettings();
 
   const logoUrl = getSetting('header_logo_url', '');
+  const showHeroSection = getSetting('show_hero_section') !== 'false';
+  const showSpecialOffers = getSetting('show_special_offers') !== 'false';
+  const showCategories = getSetting('show_categories') !== 'false';
+  const showFeaturedProducts = getSetting('show_featured_products') !== 'false';
 
   // Fetch data
   const { data: stores } = useQuery<Restaurant[]>({
@@ -71,7 +75,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#f8f9fa]">
       {/* 1. Hero Section (Elegant Banner Cards) */}
-      {activeOffers.length > 0 && (
+      {showHeroSection && showSpecialOffers && activeOffers.length > 0 && (
         <section className="container mx-auto px-2 py-4 md:py-8">
           <div className="relative group overflow-hidden rounded-[1.5rem] md:rounded-[2.5rem] shadow-xl bg-white border border-gray-100">
             <div 
@@ -179,7 +183,7 @@ export default function Home() {
       )}
 
       {/* 2. Modern Categories Grid */}
-      <section className="container mx-auto px-4 py-8 md:py-16">
+      {showCategories && <section className="container mx-auto px-4 py-8 md:py-16">
         <div className="flex flex-col items-center mb-8 md:mb-16">
           <h2 className="text-2xl md:text-5xl font-black text-gray-900 mb-2 md:mb-4 uppercase tracking-tighter italic">تصفح حسب التصنيف</h2>
           <div className="h-1 md:h-2 w-20 md:w-32 bg-primary rounded-full shadow-lg shadow-primary/20" />
@@ -211,10 +215,10 @@ export default function Home() {
             </div>
           ))}
         </div>
-      </section>
+      </section>}
 
       {/* 3. Featured Products Section */}
-      <section className="container mx-auto px-4 py-8 md:py-16 mb-16 md:mb-24">
+      {showFeaturedProducts && <section className="container mx-auto px-4 py-8 md:py-16 mb-16 md:mb-24">
         <div className="flex items-center justify-between mb-8 border-b-2 border-gray-100 pb-4">
           <Button variant="ghost" className="text-primary font-black text-sm md:text-lg p-0 hover:bg-transparent hover:translate-x-1 transition-transform" onClick={() => setLocation('/search?q=popular')}>
              عرض الكل <ChevronLeft className="mr-1 h-4 w-4 md:h-6 md:w-6" />
@@ -240,7 +244,7 @@ export default function Home() {
             />
           ))}
         </div>
-      </section>
+      </section>}
     </div>
   );
 }
