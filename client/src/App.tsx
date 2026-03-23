@@ -192,7 +192,7 @@ function Router() {
       <Route path="/auth" component={CustomerAuthPage} />
       <Route path="/favorites" component={Favorites} />
       <Route path="/addresses" component={Location} />
-      <Route path="/orders" component={OrdersPage} />
+      {showOrdersPage && <Route path="/orders" component={OrdersPage} />}
       <Route path="/orders/:orderId" component={OrderTrackingPage} />
       {showTrackOrdersPage && <Route path="/track-orders" component={TrackOrdersPage} />}
       <Route path="/settings" component={Settings} />
