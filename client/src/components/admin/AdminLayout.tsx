@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ import {
   Database,
   Star,
   Wallet,
+  Ticket,
 } from 'lucide-react';
 import type { UiSettings } from '@shared/schema';
 
@@ -35,8 +36,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [location, setLocation] = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const navRef = useRef<HTMLDivElement>(null);
+  const mobileNavRef = useRef<HTMLDivElement>(null);
 
-  // قراءة بيانات المستخدم المسجل من localStorage
   const currentAdmin = (() => {
     try {
       const stored = localStorage.getItem('admin_user');
@@ -47,7 +49,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const adminPermissions: string[] = currentAdmin?.permissions || [];
   const isSetupMode = currentAdmin?.isSetupMode === true || localStorage.getItem('admin_token') === 'SETUP_MODE';
 
-  // تحقق من الصلاحية - المدير الرئيسي يملك كل الصلاحيات، null = دائماً مرئي
   const hasPermission = (perm: string | null) => perm === null || !isSubAdmin || adminPermissions.includes(perm);
 
   const { data: uiSettings } = useQuery<UiSettings[]>({
@@ -64,6 +65,20 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     (o: any) => o.status === 'pending' && !o.driverId
   );
   const pendingOrdersCount = pendingOrders.length;
+
+  // حفظ واستعادة موضع تمرير الشريط الجانبي
+  useEffect(() => {
+    const savedScroll = sessionStorage.getItem('admin_sidebar_scroll');
+    if (savedScroll && navRef.current) {
+      navRef.current.scrollTop = parseInt(savedScroll, 10);
+    }
+  }, []);
+
+  const saveScrollPosition = useCallback(() => {
+    if (navRef.current) {
+      sessionStorage.setItem('admin_sidebar_scroll', String(navRef.current.scrollTop));
+    }
+  }, []);
 
   const getLogoUrl = () => {
     const logoSetting = uiSettings?.find(s => s.key === 'header_logo_url');
@@ -93,7 +108,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         { icon: Tag, label: 'التصنيفات', path: '/admin/categories', description: 'إدارة فئات المتاجر', permission: 'manage_categories' },
         { icon: Package, label: 'المنتجات', path: '/admin/menu-items', description: 'إدارة المنتجات والأصناف', permission: 'manage_menu' },
         { icon: Percent, label: 'العروض', path: '/admin/offers', description: 'إدارة العروض الخاصة', permission: 'manage_menu' },
-        { icon: Tag, label: 'الكوبونات', path: '/admin/coupons', description: 'إدارة كوبونات الخصم', permission: 'manage_coupons' },
+        { icon: Ticket, label: 'الكوبونات', path: '/admin/coupons', description: 'إدارة كوبونات الخصم', permission: 'manage_coupons' },
         { icon: CreditCard, label: 'طرق الدفع', path: '/admin/payment-methods', description: 'إدارة طرق الدفع', permission: 'manage_settings' },
       ]
     },
@@ -139,16 +154,30 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     },
   ];
 
-  const handleNavigation = (path: string) => {
+  const handleNavigation = useCallback((path: string) => {
+    saveScrollPosition();
     setLocation(path);
     if (window.innerWidth < 1024) {
       setIsSidebarOpen(false);
     }
-  };
+  }, [saveScrollPosition, setLocation]);
 
   const handleLogout = () => {
+    // تسجيل حدث الخروج
+    try {
+      const adminUser = localStorage.getItem('admin_user');
+      const user = adminUser ? JSON.parse(adminUser) : null;
+      if (user && user.id !== 'setup') {
+        fetch('/api/admin/security/log-logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` },
+          body: JSON.stringify({ userId: user.id, userName: user.name }),
+        }).catch(() => {});
+      }
+    } catch {}
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
+    sessionStorage.removeItem('admin_sidebar_scroll');
     window.location.href = '/admin-login';
   };
 
@@ -163,59 +192,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     return 'لوحة التحكم';
   };
 
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-white">
-      {getSidebarImageUrl() ? (
-        <div className="w-full h-40 border-b overflow-hidden relative flex-shrink-0">
-          <img 
-            src={getSidebarImageUrl()} 
-            alt="خلفية القائمة الجانبية" 
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
-            <div>
-              <h2 className="text-white font-bold text-base leading-tight">لوحة تحكم وادارة</h2>
-              <p className="text-green-100 text-sm font-medium">متجر طمطوم</p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="p-5 border-b flex-shrink-0" style={{ background: 'linear-gradient(135deg, #16a34a 0%, #dc2626 100%)' }}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-              <BarChart3 className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-white leading-tight">لوحة تحكم وادارة</h2>
-              <p className="text-green-100 text-xs">متجر طمطوم</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="px-4 py-3 border-b bg-gray-50 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-sm font-bold">
-              {currentAdmin?.name ? currentAdmin.name.charAt(0) : 'م'}
-            </span>
-          </div>
-          <div className="min-w-0">
-            <p className="font-semibold text-gray-900 text-sm truncate">
-              {currentAdmin?.name || 'مدير النظام'}
-            </p>
-            <p className="text-xs text-gray-500">
-              {isSubAdmin ? 'مشرف' : 'صلاحيات كاملة'}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <nav className="flex-1 p-3 overflow-y-auto">
-        {menuGroups.map((group) => {
-          const visibleItems = group.items.filter(item => hasPermission((item as any).permission));
-          if (visibleItems.length === 0) return null;
-          return (
+  const NavItems = ({ navElRef }: { navElRef: React.RefObject<HTMLDivElement> }) => (
+    <nav ref={navElRef} className="flex-1 p-3 overflow-y-auto">
+      {menuGroups.map((group) => {
+        const visibleItems = group.items.filter(item => hasPermission((item as any).permission));
+        if (visibleItems.length === 0) return null;
+        return (
           <div key={group.key} className="mb-4">
             <p className="text-xs font-bold text-gray-400 uppercase px-2 mb-1.5 tracking-wider">{group.label}</p>
             <div className="space-y-0.5">
@@ -249,21 +231,71 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               })}
             </div>
           </div>
-          );
-        })}
-      </nav>
+        );
+      })}
+    </nav>
+  );
 
-      <div className="p-3 border-t flex-shrink-0">
-        <Button
-          variant="outline"
-          onClick={handleLogout}
-          className="w-full flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
-          size="sm"
-        >
-          <LogOut className="h-4 w-4" />
-          تسجيل الخروج
-        </Button>
+  const SidebarHeader = () => (
+    <>
+      {getSidebarImageUrl() ? (
+        <div className="w-full h-40 border-b overflow-hidden relative flex-shrink-0">
+          <img 
+            src={getSidebarImageUrl()} 
+            alt="خلفية القائمة الجانبية" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
+            <div>
+              <h2 className="text-white font-bold text-base leading-tight">لوحة تحكم وادارة</h2>
+              <p className="text-green-100 text-sm font-medium">متجر طمطوم</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="p-5 border-b flex-shrink-0" style={{ background: 'linear-gradient(135deg, #16a34a 0%, #dc2626 100%)' }}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+              <BarChart3 className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white leading-tight">لوحة تحكم وادارة</h2>
+              <p className="text-green-100 text-xs">متجر طمطوم</p>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="px-4 py-3 border-b bg-gray-50 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+            <span className="text-white text-sm font-bold">
+              {currentAdmin?.name ? currentAdmin.name.charAt(0) : 'م'}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-900 text-sm truncate">
+              {currentAdmin?.name || 'مدير النظام'}
+            </p>
+            <p className="text-xs text-gray-500">
+              {isSubAdmin ? 'مشرف' : 'صلاحيات كاملة'}
+            </p>
+          </div>
+        </div>
       </div>
+    </>
+  );
+
+  const SidebarFooter = () => (
+    <div className="p-3 border-t flex-shrink-0">
+      <Button
+        variant="outline"
+        onClick={handleLogout}
+        className="w-full flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
+        size="sm"
+      >
+        <LogOut className="h-4 w-4" />
+        تسجيل الخروج
+      </Button>
     </div>
   );
 
@@ -319,7 +351,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row" dir="rtl">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-64 bg-white shadow-lg h-screen sticky top-0 flex-shrink-0">
-        <SidebarContent />
+        <SidebarHeader />
+        <NavItems navElRef={navRef} />
+        <SidebarFooter />
       </aside>
 
       {/* Main Content Area */}
@@ -431,8 +465,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-64 p-0">
-                <SidebarContent />
+              <SheetContent side="right" className="w-64 p-0 flex flex-col">
+                <SidebarHeader />
+                <NavItems navElRef={mobileNavRef} />
+                <SidebarFooter />
               </SheetContent>
             </Sheet>
           </div>
