@@ -70,6 +70,14 @@ export default function AdminLoginPage() {
       if (result.success) {
         localStorage.setItem('admin_token', result.token);
         localStorage.setItem('admin_user', JSON.stringify(result.user));
+        // تسجيل حدث الدخول في سجلات الأمان
+        try {
+          fetch('/api/admin/security/log-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${result.token}` },
+            body: JSON.stringify({ adminId: result.user?.id, device: navigator.userAgent }),
+          }).catch(() => {});
+        } catch {}
         window.location.href = '/admin';
       } else {
         setError(result.message || 'بيانات الدخول غير صحيحة');

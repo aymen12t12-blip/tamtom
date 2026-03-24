@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Save, Settings, Eye, Image as ImageIcon, Smartphone, Truck, 
@@ -18,6 +18,84 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import type { UiSettings, Driver } from '@shared/schema';
+
+// مكوّن مدخلات مستقر: يحتفظ بحالته الداخلية لمنع فقدان التركيز عند تغير الحالة الأب
+function StableTextInput({
+  value: externalValue,
+  onBlurSave,
+  onChange,
+  placeholder,
+  className,
+  dir,
+}: {
+  value: string;
+  onBlurSave: (value: string) => void;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+  dir?: string;
+}) {
+  const [localValue, setLocalValue] = useState(externalValue);
+  const didMount = useRef(false);
+
+  useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true;
+      return;
+    }
+    // تحديث القيمة المحلية فقط عندما تتغير القيمة الخارجية بشكل حقيقي (من الخادم)
+    setLocalValue(externalValue);
+  }, [externalValue]);
+
+  return (
+    <Input
+      value={localValue}
+      onChange={(e) => { setLocalValue(e.target.value); onChange(e.target.value); }}
+      onBlur={() => onBlurSave(localValue)}
+      placeholder={placeholder}
+      className={className}
+      dir={dir}
+    />
+  );
+}
+
+function StableTextarea({
+  value: externalValue,
+  onBlurSave,
+  onChange,
+  placeholder,
+  className,
+  rows,
+}: {
+  value: string;
+  onBlurSave: (value: string) => void;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+  rows?: number;
+}) {
+  const [localValue, setLocalValue] = useState(externalValue);
+  const didMount = useRef(false);
+
+  useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true;
+      return;
+    }
+    setLocalValue(externalValue);
+  }, [externalValue]);
+
+  return (
+    <Textarea
+      value={localValue}
+      onChange={(e) => { setLocalValue(e.target.value); onChange(e.target.value); }}
+      onBlur={() => onBlurSave(localValue)}
+      placeholder={placeholder}
+      className={className}
+      rows={rows}
+    />
+  );
+}
 
 export default function AdminUiSettings() {
   const { toast } = useToast();
@@ -175,35 +253,23 @@ export default function AdminUiSettings() {
               />
             </div>
           ) : type === 'textarea' ? (
-            <>
-              <Textarea
-                value={value}
-                onChange={(e) => set(settingKey, e.target.value)}
-                className="w-64 min-h-[80px] text-sm"
-                placeholder={placeholder || `ادخل ${label}`}
-                rows={rows}
-              />
-              {hasChange && (
-                <Button size="sm" variant="outline" onClick={() => save(settingKey)} disabled={updateSettingMutation.isPending}>
-                  <Save className="h-3 w-3" />
-                </Button>
-              )}
-            </>
+            <StableTextarea
+              value={value}
+              onChange={(v) => set(settingKey, v)}
+              onBlurSave={(v) => { set(settingKey, v); updateSettingMutation.mutate({ key: settingKey, value: v }); }}
+              className="w-64 min-h-[80px] text-sm"
+              placeholder={placeholder || `ادخل ${label}`}
+              rows={rows}
+            />
           ) : (
-            <>
-              <Input
-                value={value}
-                onChange={(e) => set(settingKey, e.target.value)}
-                className="w-56 text-sm"
-                placeholder={placeholder || `ادخل ${label}`}
-                dir="ltr"
-              />
-              {hasChange && (
-                <Button size="sm" variant="outline" onClick={() => save(settingKey)} disabled={updateSettingMutation.isPending}>
-                  <Save className="h-3 w-3" />
-                </Button>
-              )}
-            </>
+            <StableTextInput
+              value={value}
+              onChange={(v) => set(settingKey, v)}
+              onBlurSave={(v) => { set(settingKey, v); updateSettingMutation.mutate({ key: settingKey, value: v }); }}
+              className="w-56 text-sm"
+              placeholder={placeholder || `ادخل ${label}`}
+              dir="ltr"
+            />
           )}
         </div>
       </div>

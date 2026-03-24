@@ -5,7 +5,8 @@ import {
   Edit, Trash2, Eye, CheckCircle, XCircle, 
   History, ShieldCheck, Banknote as BanknoteIcon,
   Briefcase as BriefcaseIcon, FileText as FileTextIcon,
-  Phone as PhoneIcon, Mail as MailIcon, MapPin as MapPinIcon
+  Phone as PhoneIcon, Mail as MailIcon, MapPin as MapPinIcon,
+  Shield, Key, Lock, EyeOff
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -66,6 +67,280 @@ interface LeaveRequest {
   status: 'pending' | 'approved' | 'rejected';
   reason: string;
   submittedAt: string;
+}
+
+// مكوّن إدارة المشرفين الفرعيين
+function SubAdminsPanel() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [showDialog, setShowDialog] = useState(false);
+  const [editingSubAdmin, setEditingSubAdmin] = useState<any>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [form, setForm] = useState({
+    name: '', phone: '', email: '', username: '', password: '',
+    permissions: [] as string[], isActive: true
+  });
+
+  const allPermissions = [
+    { key: 'manage_orders', label: 'إدارة الطلبات' },
+    { key: 'manage_drivers', label: 'إدارة السائقين' },
+    { key: 'manage_menu', label: 'إدارة المنتجات' },
+    { key: 'manage_categories', label: 'إدارة التصنيفات' },
+    { key: 'manage_customers', label: 'إدارة المستخدمين' },
+    { key: 'manage_coupons', label: 'إدارة الكوبونات' },
+    { key: 'manage_settings', label: 'إدارة الإعدادات' },
+    { key: 'view_reports', label: 'عرض التقارير' },
+  ];
+
+  const { data: subAdmins, isLoading } = useQuery<any[]>({
+    queryKey: ['/api/admin/sub-admins'],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: typeof form) => {
+      const response = await apiRequest('POST', '/api/admin/sub-admins', data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/sub-admins'] });
+      toast({ title: 'تم إضافة المشرف بنجاح' });
+      setShowDialog(false);
+      resetForm();
+    },
+    onError: (err: any) => toast({ title: 'خطأ', description: err.message || 'فشل في إضافة المشرف', variant: 'destructive' }),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const response = await apiRequest('PUT', `/api/admin/sub-admins/${id}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/sub-admins'] });
+      toast({ title: 'تم تحديث المشرف بنجاح' });
+      setShowDialog(false);
+      resetForm();
+    },
+    onError: (err: any) => toast({ title: 'خطأ', description: err.message || 'فشل في التحديث', variant: 'destructive' }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest('DELETE', `/api/admin/sub-admins/${id}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/sub-admins'] });
+      toast({ title: 'تم حذف المشرف' });
+    },
+    onError: () => toast({ title: 'خطأ في الحذف', variant: 'destructive' }),
+  });
+
+  const resetForm = () => {
+    setForm({ name: '', phone: '', email: '', username: '', password: '', permissions: [], isActive: true });
+    setEditingSubAdmin(null);
+    setShowPassword(false);
+  };
+
+  const openEdit = (sub: any) => {
+    setEditingSubAdmin(sub);
+    const perms = typeof sub.permissions === 'string' ? JSON.parse(sub.permissions || '[]') : (sub.permissions || []);
+    setForm({ name: sub.name, phone: sub.phone || '', email: sub.email || '', username: sub.username || '', password: '', permissions: perms, isActive: sub.isActive });
+    setShowDialog(true);
+  };
+
+  const togglePermission = (key: string) => {
+    setForm(prev => ({
+      ...prev,
+      permissions: prev.permissions.includes(key)
+        ? prev.permissions.filter(p => p !== key)
+        : [...prev.permissions, key]
+    }));
+  };
+
+  const handleSubmit = () => {
+    if (!form.name.trim()) return toast({ title: 'الاسم مطلوب', variant: 'destructive' });
+    if (!form.phone.trim()) return toast({ title: 'رقم الهاتف مطلوب', variant: 'destructive' });
+    if (!editingSubAdmin && !form.password) return toast({ title: 'كلمة المرور مطلوبة', variant: 'destructive' });
+    if (editingSubAdmin) {
+      const data: any = { name: form.name, phone: form.phone, email: form.email, username: form.username, permissions: form.permissions, isActive: form.isActive };
+      if (form.password) data.password = form.password;
+      updateMutation.mutate({ id: editingSubAdmin.id, data });
+    } else {
+      createMutation.mutate(form);
+    }
+  };
+
+  if (isLoading) return <div className="py-8 text-center text-muted-foreground">جاري التحميل...</div>;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2"><Shield className="w-5 h-5" />إدارة المشرفين الفرعيين</CardTitle>
+            <CardDescription>منح صلاحيات لوحة التحكم لأعضاء الفريق</CardDescription>
+          </div>
+          <Button onClick={() => { resetForm(); setShowDialog(true); }} className="gap-2">
+            <UserPlus className="w-4 h-4" />
+            إضافة مشرف
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {!subAdmins || subAdmins.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Shield className="w-12 h-12 mx-auto mb-4 opacity-20" />
+            <p>لا يوجد مشرفون فرعيون حتى الآن</p>
+            <p className="text-sm">أضف مشرفين لمنحهم صلاحيات محددة في لوحة التحكم</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>الاسم</TableHead>
+                <TableHead>الهاتف</TableHead>
+                <TableHead>الصلاحيات</TableHead>
+                <TableHead>الحالة</TableHead>
+                <TableHead>الإجراءات</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {subAdmins.map((sub: any) => {
+                const perms = typeof sub.permissions === 'string' ? JSON.parse(sub.permissions || '[]') : (sub.permissions || []);
+                return (
+                  <TableRow key={sub.id}>
+                    <TableCell>
+                      <div className="font-medium">{sub.name}</div>
+                      {sub.email && <div className="text-xs text-muted-foreground">{sub.email}</div>}
+                    </TableCell>
+                    <TableCell>{sub.phone}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {perms.length === 0 ? (
+                          <span className="text-xs text-muted-foreground">لا صلاحيات</span>
+                        ) : perms.slice(0, 3).map((p: string) => (
+                          <Badge key={p} variant="secondary" className="text-xs">
+                            {allPermissions.find(ap => ap.key === p)?.label || p}
+                          </Badge>
+                        ))}
+                        {perms.length > 3 && <Badge variant="outline" className="text-xs">+{perms.length - 3}</Badge>}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={sub.isActive ? 'default' : 'secondary'}>
+                        {sub.isActive ? 'نشط' : 'معطل'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => openEdit(sub)}>
+                          <Edit className="w-3 h-3" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700">
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>حذف المشرف</AlertDialogTitle>
+                              <AlertDialogDescription>هل أنت متأكد من حذف "{sub.name}"؟ لا يمكن التراجع عن هذا الإجراء.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                              <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => deleteMutation.mutate(sub.id)}>
+                                حذف
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+
+      <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) resetForm(); }}>
+        <DialogContent className="max-w-lg rtl">
+          <DialogHeader>
+            <DialogTitle>{editingSubAdmin ? 'تعديل المشرف' : 'إضافة مشرف جديد'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>الاسم <span className="text-red-500">*</span></Label>
+                <Input value={form.name} onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))} placeholder="اسم المشرف" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>رقم الهاتف <span className="text-red-500">*</span></Label>
+                <Input value={form.phone} onChange={(e) => setForm(p => ({ ...p, phone: e.target.value }))} placeholder="967xxxxxxxx" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>البريد الإلكتروني</Label>
+                <Input type="email" value={form.email} onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))} placeholder="اختياري" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>كلمة المرور {!editingSubAdmin && <span className="text-red-500">*</span>}</Label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={form.password}
+                    onChange={(e) => setForm(p => ({ ...p, password: e.target.value }))}
+                    placeholder={editingSubAdmin ? "اتركها فارغة للإبقاء" : "كلمة مرور قوية"}
+                    className="pl-9"
+                  />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2"><Key className="w-4 h-4" />الصلاحيات</Label>
+              <div className="grid grid-cols-2 gap-2 border rounded-lg p-3">
+                {allPermissions.map(({ key, label }) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id={`perm-${key}`}
+                      checked={form.permissions.includes(key)}
+                      onChange={() => togglePermission(key)}
+                      className="rounded"
+                    />
+                    <label htmlFor={`perm-${key}`} className="text-sm cursor-pointer">{label}</label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="sub-admin-active"
+                checked={form.isActive}
+                onChange={(e) => setForm(p => ({ ...p, isActive: e.target.checked }))}
+                className="rounded"
+              />
+              <label htmlFor="sub-admin-active" className="text-sm cursor-pointer">الحساب نشط</label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowDialog(false); resetForm(); }}>إلغاء</Button>
+            <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
+              {(createMutation.isPending || updateMutation.isPending) ? 'جاري الحفظ...' : (editingSubAdmin ? 'حفظ التغييرات' : 'إضافة المشرف')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
 }
 
 export default function AdminHRManagement() {
@@ -206,22 +481,26 @@ export default function AdminHRManagement() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
-          <TabsTrigger value="employees" className="gap-2">
-            <Users className="w-4 h-4" />
+        <TabsList className="grid w-full grid-cols-5 lg:w-[750px]">
+          <TabsTrigger value="employees" className="gap-1 text-xs">
+            <Users className="w-3 h-3" />
             الموظفين
           </TabsTrigger>
-          <TabsTrigger value="attendance" className="gap-2">
-            <Clock className="w-4 h-4" />
-            الحضور والإنصراف
+          <TabsTrigger value="attendance" className="gap-1 text-xs">
+            <Clock className="w-3 h-3" />
+            الحضور
           </TabsTrigger>
-          <TabsTrigger value="leave" className="gap-2">
-            <Calendar className="w-4 h-4" />
-            طلبات الإجازة
+          <TabsTrigger value="leave" className="gap-1 text-xs">
+            <Calendar className="w-3 h-3" />
+            الإجازات
           </TabsTrigger>
-          <TabsTrigger value="payroll" className="gap-2">
-            <BanknoteIcon className="w-4 h-4" />
+          <TabsTrigger value="payroll" className="gap-1 text-xs">
+            <BanknoteIcon className="w-3 h-3" />
             الرواتب
+          </TabsTrigger>
+          <TabsTrigger value="sub-admins" className="gap-1 text-xs">
+            <Shield className="w-3 h-3" />
+            المشرفون
           </TabsTrigger>
         </TabsList>
 
@@ -469,6 +748,10 @@ export default function AdminHRManagement() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="sub-admins">
+          <SubAdminsPanel />
         </TabsContent>
       </Tabs>
 
