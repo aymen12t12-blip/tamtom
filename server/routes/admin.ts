@@ -41,7 +41,8 @@ import {
   driverBalances,
   driverTransactions,
   driverCommissions,
-  driverWithdrawals
+  driverWithdrawals,
+  auditLogs
 } from "@shared/schema";
 import { DatabaseStorage } from "../db";
 import { coerceRequestData } from "../utils/coercion";
@@ -2307,6 +2308,108 @@ router.put("/sub-admins/:id", async (req, res) => {
 router.delete("/sub-admins/:id", async (req, res) => {
   try {
     await db.delete(adminUsers).where(eq(adminUsers.id, req.params.id));
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+// ===== Security Logging Routes =====
+
+router.get("/security/settings", async (req, res) => {
+  try {
+    res.json({
+      twoFactorEnabled: false,
+      sessionTimeout: 60,
+      passwordComplexity: 'medium',
+      ipWhitelist: [],
+      lastAudit: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.get("/security/logs", async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 50;
+    const logs = await db
+      .select({
+        id: auditLogs.id,
+        adminId: auditLogs.adminId,
+        action: auditLogs.action,
+        entityType: auditLogs.entityType,
+        entityId: auditLogs.entityId,
+        ipAddress: auditLogs.ipAddress,
+        createdAt: auditLogs.createdAt,
+        oldData: auditLogs.oldData,
+        newData: auditLogs.newData,
+      })
+      .from(auditLogs)
+      .where(sql`${auditLogs.entityType} = 'auth'`)
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(limit);
+
+    const adminIds = [...new Set(logs.map(l => l.adminId))];
+    let adminMap: Record<string, string> = {};
+    if (adminIds.length > 0) {
+      const admins = await db.select({ id: adminUsers.id, name: adminUsers.name }).from(adminUsers).where(inArray(adminUsers.id, adminIds));
+      admins.forEach(a => { adminMap[a.id] = a.name; });
+    }
+
+    const formatted = logs.map(log => ({
+      id: log.id,
+      userId: log.adminId,
+      userName: adminMap[log.adminId] || 'مستخدم',
+      action: log.action === 'login' ? 'تسجيل الدخول' : log.action === 'logout' ? 'تسجيل الخروج' : log.action,
+      ipAddress: log.ipAddress || 'غير معروف',
+      device: log.oldData ? (() => { try { return JSON.parse(log.oldData)?.device || 'غير معروف'; } catch { return 'غير معروف'; } })() : 'غير معروف',
+      location: 'اليمن',
+      createdAt: log.createdAt,
+      status: (log.newData ? (() => { try { return JSON.parse(log.newData)?.status || 'success'; } catch { return 'success'; } })() : 'success') as 'success' | 'failure' | 'warning',
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.post("/security/log-login", async (req, res) => {
+  try {
+    const { adminId, ipAddress, device } = req.body;
+    if (!adminId) return res.status(400).json({ error: "معرف المدير مطلوب" });
+    await db.insert(auditLogs).values({
+      adminId,
+      action: 'login',
+      entityType: 'auth',
+      entityId: adminId,
+      ipAddress: ipAddress || req.ip || 'unknown',
+      oldData: JSON.stringify({ device: device || req.headers['user-agent'] || 'غير معروف' }),
+      newData: JSON.stringify({ status: 'success' }),
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.post("/security/log-logout", async (req, res) => {
+  try {
+    const { userId, userName } = req.body;
+    if (!userId) return res.status(400).json({ error: "معرف المستخدم مطلوب" });
+    // التحقق من وجود المدير أولاً
+    const [admin] = await db.select({ id: adminUsers.id }).from(adminUsers).where(eq(adminUsers.id, userId)).limit(1);
+    if (!admin) return res.json({ success: true }); // تجاهل إذا لم يوجد
+    await db.insert(auditLogs).values({
+      adminId: userId,
+      action: 'logout',
+      entityType: 'auth',
+      entityId: userId,
+      ipAddress: req.ip || 'unknown',
+      oldData: JSON.stringify({ device: req.headers['user-agent'] || 'غير معروف', name: userName }),
+      newData: JSON.stringify({ status: 'success' }),
+    });
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "خطأ في الخادم" });

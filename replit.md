@@ -139,3 +139,19 @@ The `drivers` table has these important fields:
 - **الأقسام**: Search bar (sticky) added
 - **العروض الخاصة**: No restaurant association required (global store offers)
 - **Currency**: SAR everywhere (ر.س) — locale: ar-SA
+
+## Recent Improvements (March 2026)
+
+### Bug Fixes
+- **Fixed missing admin routes**: Added `/admin/coupons`, `/admin/payment-methods`, `/admin/detailed-reports` routes to AdminApp.tsx
+- **Fixed AdminLayout wrapping**: AdminApp now wraps all routes with `<AdminLayout>` at the top level
+- **Fixed input focus issue in AdminUiSettings**: Created `StableTextInput` and `StableTextarea` components outside the main component to prevent React remounting on every state change (inputs no longer lose focus while typing)
+- **Fixed sidebar scroll preservation**: Added sessionStorage-based scroll position save/restore in AdminLayout.tsx using `useRef` and `useEffect`
+
+### New Features
+- **Sub-admins management moved to HR Management**: Sub-admins tab added to AdminHRManagement.tsx with full CRUD (create/edit/delete sub-admins, assign granular permissions)
+- **AdminProfile simplified**: Now shows only profile info + password change. Added hint to manage sub-admins via HR Management
+- **Security logging**: Login events are now logged to `audit_logs` table (entityType='auth'). Logout events logged via `POST /api/admin/security/log-logout`. Security page at `/admin/security` now displays real login/logout history
+- **Security API routes**: Added `GET /api/admin/security/logs`, `POST /api/admin/security/log-login`, `POST /api/admin/security/log-logout`, `GET /api/admin/security/settings`
+- **Sticky header in AdminLayout**: Desktop and mobile headers are now sticky (top-0 with z-30)
+- **Improved sidebar**: Clean grouping of nav items (Main, Store, Drivers, Reports, Management, Settings), notifications bell with badge, user avatar display
