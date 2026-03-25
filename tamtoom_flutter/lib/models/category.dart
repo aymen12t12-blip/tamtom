@@ -3,6 +3,7 @@ class Category {
   final String name;
   final String? icon;
   final String? image;
+  final String? description;
   final int? sortOrder;
 
   Category({
@@ -10,6 +11,7 @@ class Category {
     required this.name,
     this.icon,
     this.image,
+    this.description,
     this.sortOrder,
   });
 
@@ -19,6 +21,7 @@ class Category {
       name: json['name'] ?? '',
       icon: json['icon'],
       image: json['image'],
+      description: json['description'],
       sortOrder: json['sortOrder'],
     );
   }

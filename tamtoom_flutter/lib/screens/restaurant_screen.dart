@@ -6,6 +6,7 @@ import '../models/menu_item.dart';
 import '../providers/cart_provider.dart';
 import '../services/api_service.dart';
 import 'cart_screen.dart';
+import 'product_detail_screen.dart';
 
 class RestaurantScreen extends StatefulWidget {
   final Restaurant restaurant;
@@ -62,25 +63,28 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
               pinned: true,
               backgroundColor: const Color(0xFF2E7D32),
               flexibleSpace: FlexibleSpaceBar(
-                background: widget.restaurant.image != null &&
-                        widget.restaurant.image!.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: widget.restaurant.image!.startsWith('http')
-                            ? widget.restaurant.image!
-                            : 'https://99b4d7e9-c93f-45c5-b450-66829a4d2865-00-lubjf8dozjuc.sisko.replit.dev${widget.restaurant.image}',
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => Container(
-                          color: Colors.green[100],
-                          child: const Center(
-                              child: Text('🏪', style: TextStyle(fontSize: 80))),
-                        ),
-                      )
-                    : Container(
-                        color: Colors.green[100],
-                        child: const Center(
-                            child:
-                                Text('🏪', style: TextStyle(fontSize: 80))),
-                      ),
+                background: Builder(
+                  builder: (_) {
+                    final imgUrl = _api.resolveImageUrl(widget.restaurant.image);
+                    return imgUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: imgUrl,
+                            fit: BoxFit.cover,
+                            errorWidget: (_, __, ___) => Container(
+                              color: Colors.green[100],
+                              child: const Center(
+                                  child: Text('🏪',
+                                      style: TextStyle(fontSize: 80))),
+                            ),
+                          )
+                        : Container(
+                            color: Colors.green[100],
+                            child: const Center(
+                                child: Text('🏪',
+                                    style: TextStyle(fontSize: 80))),
+                          );
+                  },
+                ),
               ),
               actions: [
                 Stack(
@@ -254,167 +258,173 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
     final cart = context.watch<CartProvider>();
     final quantity = cart.getQuantity(item.id);
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => ProductDetailScreen(item: item)),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            // صورة العنصر
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: item.image != null && item.image!.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: item.image!.startsWith('http')
-                          ? item.image!
-                          : 'https://99b4d7e9-c93f-45c5-b450-66829a4d2865-00-lubjf8dozjuc.sisko.replit.dev${item.image}',
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => _itemPlaceholder(),
-                    )
-                  : _itemPlaceholder(),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
-            const SizedBox(width: 12),
-            // معلومات العنصر
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
-                  ),
-                  if (item.description != null && item.description!.isNotEmpty)
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              // صورة العنصر
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Builder(builder: (_) {
+                  final imgUrl = _api.resolveImageUrl(item.image);
+                  return imgUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: imgUrl,
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => _itemPlaceholder(),
+                        )
+                      : _itemPlaceholder();
+                }),
+              ),
+              const SizedBox(width: 12),
+              // معلومات العنصر
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      item.description!,
-                      style:
-                          TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '${item.price.toStringAsFixed(0)} ر.ي${item.unit != null ? '/${item.unit}' : ''}',
-                        style: const TextStyle(
-                          color: Color(0xFF2E7D32),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
+                      item.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
                       ),
-                      // أزرار الكمية
-                      if (!item.isAvailable)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
+                    ),
+                    if (item.description != null && item.description!.isNotEmpty)
+                      Text(
+                        item.description!,
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${item.price.toStringAsFixed(0)} ر.ي${item.unit != null ? '/${item.unit}' : ''}',
+                          style: const TextStyle(
+                            color: Color(0xFF2E7D32),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
                           ),
-                          child: const Text('غير متاح',
-                              style: TextStyle(
-                                  color: Colors.grey, fontSize: 12)),
-                        )
-                      else if (quantity == 0)
-                        GestureDetector(
-                          onTap: () {
-                            context.read<CartProvider>().addItem(
-                                  item,
-                                  widget.restaurant.id,
-                                  widget.restaurant.name,
-                                );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('تم إضافة ${item.name}'),
-                                duration: const Duration(seconds: 1),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            width: 36,
-                            height: 36,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF4CAF50),
-                              shape: BoxShape.circle,
+                        ),
+                        // أزرار الكمية
+                        if (!item.isAvailable)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(Icons.add,
-                                color: Colors.white, size: 20),
-                          ),
-                        )
-                      else
-                        Row(
-                          children: [
-                            GestureDetector(
-                              onTap: () => context
-                                  .read<CartProvider>()
-                                  .updateQuantity(item.id, quantity - 1),
-                              child: Container(
-                                width: 30,
-                                height: 30,
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                      color: const Color(0xFF4CAF50)),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.remove,
-                                    size: 16, color: Color(0xFF4CAF50)),
-                              ),
-                            ),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 10),
-                              child: Text(
-                                '$quantity',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () => context
-                                  .read<CartProvider>()
-                                  .addItem(
+                            child: const Text('غير متاح',
+                                style: TextStyle(
+                                    color: Colors.grey, fontSize: 12)),
+                          )
+                        else if (quantity == 0)
+                          GestureDetector(
+                            onTap: () {
+                              context.read<CartProvider>().addItem(
                                     item,
                                     widget.restaurant.id,
                                     widget.restaurant.name,
-                                  ),
-                              child: Container(
-                                width: 30,
-                                height: 30,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF4CAF50),
-                                  shape: BoxShape.circle,
+                                  );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('تم إضافة ${item.name}'),
+                                  duration: const Duration(seconds: 1),
                                 ),
-                                child: const Icon(Icons.add,
-                                    size: 16, color: Colors.white),
+                              );
+                            },
+                            child: Container(
+                              width: 36,
+                              height: 36,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF4CAF50),
+                                shape: BoxShape.circle,
                               ),
+                              child: const Icon(Icons.add,
+                                  color: Colors.white, size: 20),
                             ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ],
+                          )
+                        else
+                          Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () => context
+                                    .read<CartProvider>()
+                                    .updateQuantity(item.id, quantity - 1),
+                                child: Container(
+                                  width: 30,
+                                  height: 30,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                        color: const Color(0xFF4CAF50)),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.remove,
+                                      size: 16, color: Color(0xFF4CAF50)),
+                                ),
+                              ),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 10),
+                                child: Text(
+                                  '$quantity',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => context
+                                    .read<CartProvider>()
+                                    .addItem(
+                                      item,
+                                      widget.restaurant.id,
+                                      widget.restaurant.name,
+                                    ),
+                                child: Container(
+                                  width: 30,
+                                  height: 30,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF4CAF50),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.add,
+                                      size: 16, color: Colors.white),
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

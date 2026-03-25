@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
+import 'providers/ui_settings_provider.dart';
 import 'screens/splash_screen.dart';
 import 'screens/main_scaffold.dart';
 import 'screens/auth/auth_screen.dart';
@@ -22,6 +23,7 @@ class TamtoomApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => UiSettingsProvider()),
       ],
       child: MaterialApp(
         title: 'طمطوم',

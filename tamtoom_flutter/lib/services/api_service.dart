@@ -31,6 +31,12 @@ class ApiService {
     return uri;
   }
 
+  String resolveImageUrl(String? image) {
+    if (image == null || image.isEmpty) return '';
+    if (image.startsWith('http')) return image;
+    return '${ApiConfig.baseUrl}$image';
+  }
+
   // =================== الفئات ===================
   Future<List<Category>> getCategories() async {
     try {
@@ -70,6 +76,52 @@ class ApiService {
           .timeout(ApiConfig.timeout);
       if (response.statusCode == 200) {
         return Restaurant.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // =================== المنتجات ===================
+  Future<List<MenuItem>> getFeaturedProducts() async {
+    try {
+      final response = await http
+          .get(_uri(ApiConfig.featuredProducts), headers: _headers)
+          .timeout(ApiConfig.timeout);
+      if (response.statusCode == 200) {
+        final List data = jsonDecode(utf8.decode(response.bodyBytes));
+        return data.map((j) => MenuItem.fromJson(j)).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<List<MenuItem>> getProductsByCategory(String categoryName) async {
+    try {
+      final response = await http
+          .get(_uri(ApiConfig.products, {'category': categoryName}),
+              headers: _headers)
+          .timeout(ApiConfig.timeout);
+      if (response.statusCode == 200) {
+        final List data = jsonDecode(utf8.decode(response.bodyBytes));
+        return data.map((j) => MenuItem.fromJson(j)).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<MenuItem?> getProduct(String id) async {
+    try {
+      final response = await http
+          .get(_uri('${ApiConfig.products}/$id'), headers: _headers)
+          .timeout(ApiConfig.timeout);
+      if (response.statusCode == 200) {
+        return MenuItem.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
       }
       return null;
     } catch (e) {
@@ -194,6 +246,20 @@ class ApiService {
     }
   }
 
+  Future<Order?> getOrderById(String orderId) async {
+    try {
+      final response = await http
+          .get(_uri('/api/orders/$orderId'), headers: _headers)
+          .timeout(ApiConfig.timeout);
+      if (response.statusCode == 200) {
+        return Order.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<List<Order>> getOrdersByPhone(String phone) async {
     try {
       final response = await http
@@ -259,14 +325,24 @@ class ApiService {
     }
   }
 
-  // =================== إعدادات النظام ===================
-  Future<Map<String, dynamic>> getSettings() async {
+  // =================== إعدادات واجهة المستخدم ===================
+  Future<Map<String, dynamic>> getUiSettings() async {
     try {
       final response = await http
-          .get(_uri(ApiConfig.systemSettings), headers: _headers)
+          .get(_uri(ApiConfig.uiSettings), headers: _headers)
           .timeout(ApiConfig.timeout);
       if (response.statusCode == 200) {
-        return jsonDecode(utf8.decode(response.bodyBytes));
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        if (data is List) {
+          final Map<String, dynamic> result = {};
+          for (final item in data) {
+            if (item['key'] != null) {
+              result[item['key']] = item['value'] ?? item;
+            }
+          }
+          return result;
+        }
+        return data is Map<String, dynamic> ? data : {};
       }
       return {};
     } catch (e) {
@@ -286,6 +362,75 @@ class ApiService {
       return [];
     } catch (e) {
       return [];
+    }
+  }
+
+  // =================== العناوين ===================
+  Future<List<dynamic>> getAddresses(String userId) async {
+    try {
+      final response = await http
+          .get(_uri('/api/customer/$userId/addresses'), headers: _headers)
+          .timeout(ApiConfig.timeout);
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<bool> addAddress(String userId, Map<String, dynamic> address) async {
+    try {
+      final response = await http
+          .post(
+            _uri('/api/customer/$userId/addresses'),
+            headers: _headers,
+            body: jsonEncode(address),
+          )
+          .timeout(ApiConfig.timeout);
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteAddress(String userId, String addressId) async {
+    try {
+      final response = await http
+          .delete(
+            _uri('/api/customer/$userId/addresses/$addressId'),
+            headers: _headers,
+          )
+          .timeout(ApiConfig.timeout);
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // =================== تقييم الطلب ===================
+  Future<bool> submitReview({
+    required String orderId,
+    required double restaurantRating,
+    required double driverRating,
+    String? comment,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            _uri('/api/customer/orders/$orderId/review'),
+            headers: _headers,
+            body: jsonEncode({
+              'restaurantRating': restaurantRating,
+              'driverRating': driverRating,
+              'comment': comment ?? '',
+            }),
+          )
+          .timeout(ApiConfig.timeout);
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      return false;
     }
   }
 }
