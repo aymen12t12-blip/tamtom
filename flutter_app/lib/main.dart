@@ -1,122 +1,80 @@
+// lib/main.dart
+// التطبيق الرئيسي - بدون شريط DEBUG
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'services/config_service.dart';
-import 'services/notification_service.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
+import 'dart:io';
 import 'screens/splash_screen.dart';
 
-void main() async {
+void main() {
+  // 🔥 الخطوة 1: تأكد من تهيئة Flutter
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Set system UI overlay style
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ),
-  );
-
-  // Lock portrait orientation
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
-
-  // Initialize Firebase (required for push notifications)
-  try {
-    await Firebase.initializeApp(
-      options: const FirebaseOptions(
-        // TODO: Replace with your Firebase project credentials
-        // Get from: https://console.firebase.google.com/
-        apiKey: 'YOUR_API_KEY',
-        appId: 'YOUR_APP_ID',
-        messagingSenderId: 'YOUR_SENDER_ID',
-        projectId: 'YOUR_PROJECT_ID',
-        storageBucket: 'YOUR_STORAGE_BUCKET',
-      ),
-    );
-    // Initialize notifications after Firebase
-    await NotificationService().initialize();
-  } catch (e) {
-    print('Firebase init error (notifications disabled): $e');
+  
+  // 🔥 الخطوة 2: تهيئة WebView حسب المنصة
+  if (Platform.isAndroid) {
+    // تهيئة لمنصة Android
+    WebViewPlatform.instance = AndroidWebViewPlatform();
+  } else if (Platform.isIOS) {
+    // تهيئة لمنصة iOS
+    WebViewPlatform.instance = WebKitWebViewPlatform();
   }
-
-  // Fetch app config from server
-  final config = await ConfigService.fetchConfig();
-
-  runApp(TamtomApp(config: config));
+  
+  // 🔥 الخطوة 3: تشغيل التطبيق
+  runApp(const MyApp());
 }
 
-class TamtomApp extends StatelessWidget {
-  final AppConfig config;
-  const TamtomApp({Key? key, required this.config}) : super(key: key);
-
-  Color _parseColor(String hex, Color fallback) {
-    try {
-      return Color(ConfigService.hexToColor(hex));
-    } catch (_) {
-      return fallback;
-    }
-  }
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = _parseColor(config.primaryColor, const Color(0xFF4CAF50));
-    final secondaryColor = _parseColor(config.secondaryColor, const Color(0xFFFF9800));
-
     return MaterialApp(
-      title: config.appName,
+      title: 'تطبيق طمطوم',
+      
+      // إخفاء شريط DEBUG (Banner)
       debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.system,
-
-      // Light Theme
+      
+      // إعدادات السمة (Theme) - مبسطة بدون شريط علوي
       theme: ThemeData(
-        useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: primaryColor,
-          secondary: secondaryColor,
+          seedColor: Colors.red,
+          primary: Colors.red,
+          secondary: Colors.green,
           brightness: Brightness.light,
         ),
-        textTheme: GoogleFonts.cairoTextTheme(),
-        appBarTheme: AppBarTheme(
-          backgroundColor: primaryColor,
+        useMaterial3: true,
+        
+        // إعدادات شريط التطبيق (لن يظهر لأننا أزلناه من WebViewScreen)
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.red,
           foregroundColor: Colors.white,
           elevation: 0,
           centerTitle: true,
         ),
+        
+        // تخصيص الأزرار
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: primaryColor,
+            backgroundColor: Colors.red,
             foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
             ),
           ),
         ),
-        progressIndicatorTheme: ProgressIndicatorThemeData(
-          color: primaryColor,
-        ),
-      ),
-
-      // Dark Theme
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: primaryColor,
-          secondary: secondaryColor,
-          brightness: Brightness.dark,
-        ),
-        textTheme: GoogleFonts.cairoTextTheme(ThemeData.dark().textTheme),
-        appBarTheme: AppBarTheme(
-          backgroundColor: const Color(0xFF1A1A2E),
+        
+        // تخصيص زر الفلوتينج أكشن
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: Colors.red,
           foregroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: true,
         ),
       ),
-
-      home: SplashScreen(config: config),
+      
+      // تعيين الشاشة الرئيسية إلى SplashScreen
+      home: const SplashScreen(),
     );
   }
 }

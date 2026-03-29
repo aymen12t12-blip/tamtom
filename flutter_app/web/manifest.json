@@ -1,6 +1,6 @@
 {
-    "name": "tamtom_store",
-    "short_name": "tamtom_store",
+    "name": "tamtom",
+    "short_name": "tamtom",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

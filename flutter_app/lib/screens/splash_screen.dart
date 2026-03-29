@@ -1,309 +1,210 @@
+// lib/screens/splash_screen.dart
+// شاشة البداية (Splash Screen) مع أنيميشن سقوط الشعار والغبار
+
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import '../services/config_service.dart';
-import 'web_screen.dart';
+import 'webview_screen.dart';
 
 class SplashScreen extends StatefulWidget {
-  final AppConfig config;
-  const SplashScreen({Key? key, required this.config}) : super(key: key);
+  const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with TickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
   late AnimationController _logoController;
-  late AnimationController _textController;
-  late AnimationController _backgroundController;
-
-  late Animation<double> _logoScale;
+  late Animation<double> _logoAnimation;
   late Animation<double> _logoOpacity;
-  late Animation<Offset> _textSlide;
+
+  late AnimationController _dustController;
+  late Animation<double> _dustAnimation;
+  late Animation<double> _dustOpacity;
+
+  late AnimationController _textController;
   late Animation<double> _textOpacity;
-  late Animation<double> _backgroundOpacity;
 
   @override
   void initState() {
     super.initState();
-    _initAnimations();
-    _navigateAfterDelay();
-  }
 
-  void _initAnimations() {
-    _backgroundController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
+    // 1. إعداد أنيميشن سقوط الشعار
     _logoController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _textController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 1000),
     );
 
-    _backgroundOpacity = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _backgroundController, curve: Curves.easeIn),
+    _logoAnimation = Tween<double>(begin: -200, end: 0).animate(
+      CurvedAnimation(parent: _logoController, curve: Curves.bounceOut),
     );
-    _logoScale = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _logoController, curve: Curves.elasticOut),
-    );
+
     _logoOpacity = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _logoController, curve: Curves.easeIn),
+      CurvedAnimation(parent: _logoController, curve: const Interval(0, 0.5, curve: Curves.easeIn)),
     );
-    _textSlide = Tween<Offset>(
-      begin: const Offset(0, 0.5),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _textController, curve: Curves.easeOut));
+
+    // 2. إعداد أنيميشن الغبار (تأثير دائرة تتوسع عند السقوط)
+    _dustController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _dustAnimation = Tween<double>(begin: 0, end: 150).animate(
+      CurvedAnimation(parent: _dustController, curve: Curves.easeOut),
+    );
+
+    _dustOpacity = Tween<double>(begin: 0.5, end: 0).animate(
+      CurvedAnimation(parent: _dustController, curve: Curves.easeOut),
+    );
+
+    // 3. إعداد أنيميشن ظهور النص
+    _textController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
     _textOpacity = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _textController, curve: Curves.easeIn),
     );
 
-    _backgroundController.forward();
-    Future.delayed(const Duration(milliseconds: 200), () {
-      if (mounted) _logoController.forward();
-    });
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted) _textController.forward();
-    });
+    // تشغيل التسلسل
+    _startAnimation();
   }
 
-  void _navigateAfterDelay() {
-    final duration = widget.config.splashDuration;
-    Future.delayed(Duration(milliseconds: duration < 1000 ? 3000 : duration), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => WebScreen(config: widget.config),
-            transitionDuration: const Duration(milliseconds: 600),
-            transitionsBuilder: (_, animation, __, child) {
-              return FadeTransition(opacity: animation, child: child);
-            },
-          ),
-        );
-      }
-    });
-  }
+  Future<void> _startAnimation() async {
+    // تشغيل سقوط الشعار
+    await _logoController.forward();
+    
+    // تشغيل الغبار عند الاصطدام (تقريباً في نهاية سقوط الشعار)
+    _dustController.forward();
+    
+    // تشغيل ظهور النص
+    await _textController.forward();
 
-  Color _parseColor(String hex, Color fallback) {
-    try {
-      return Color(ConfigService.hexToColor(hex));
-    } catch (_) {
-      return fallback;
+    // الانتظار قليلاً قبل الانتقال
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => const WebViewScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 1000),
+        ),
+      );
     }
   }
 
   @override
   void dispose() {
     _logoController.dispose();
+    _dustController.dispose();
     _textController.dispose();
-    _backgroundController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = _parseColor(
-      widget.config.splashBackgroundColor,
-      const Color(0xFFFFFFFF),
-    );
-    final primaryColor = _parseColor(
-      widget.config.primaryColor,
-      const Color(0xFF4CAF50),
-    );
-
     return Scaffold(
-      body: AnimatedBuilder(
-        animation: _backgroundController,
-        builder: (context, child) {
-          return FadeTransition(
-            opacity: _backgroundOpacity,
-            child: Container(
-              width: double.infinity,
-              height: double.infinity,
-              decoration: BoxDecoration(
-                color: bgColor,
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    bgColor,
-                    bgColor.withOpacity(0.85),
-                  ],
-                ),
-              ),
-              child: Stack(
-                children: [
-                  // Background decorative circles
-                  Positioned(
-                    top: -80,
-                    right: -80,
-                    child: _buildDecorativeCircle(200, primaryColor.withOpacity(0.08)),
-                  ),
-                  Positioned(
-                    bottom: -60,
-                    left: -60,
-                    child: _buildDecorativeCircle(180, primaryColor.withOpacity(0.06)),
-                  ),
-                  // Main content
-                  Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Logo / Image
-                        AnimatedBuilder(
-                          animation: _logoController,
-                          builder: (context, child) {
-                            return FadeTransition(
-                              opacity: _logoOpacity,
-                              child: ScaleTransition(
-                                scale: _logoScale,
-                                child: child,
-                              ),
-                            );
-                          },
-                          child: _buildLogo(primaryColor),
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                // تأثير الغبار
+                AnimatedBuilder(
+                  animation: _dustController,
+                  builder: (context, child) {
+                    return Opacity(
+                      opacity: _dustOpacity.value,
+                      child: Container(
+                        width: _dustAnimation.value,
+                        height: _dustAnimation.value / 2,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.5),
+                              blurRadius: 20,
+                              spreadRadius: 5,
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 32),
-                        // Title & Subtitle
-                        AnimatedBuilder(
-                          animation: _textController,
-                          builder: (context, child) {
-                            return SlideTransition(
-                              position: _textSlide,
-                              child: FadeTransition(
-                                opacity: _textOpacity,
-                                child: child,
+                      ),
+                    );
+                  },
+                ),
+                
+                // الشعار (استخدام أيقونة طماطم أو سلة فواكه)
+                AnimatedBuilder(
+                  animation: _logoController,
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(0, _logoAnimation.value),
+                      child: Opacity(
+                        opacity: _logoOpacity.value,
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.red.withOpacity(0.3),
+                                blurRadius: 15,
+                                spreadRadius: 5,
                               ),
-                            );
-                          },
-                          child: Column(
-                            children: [
-                                Text(
-                                  widget.config.splashTitle,
-                                  textDirection: TextDirection.rtl,
-                                  style: GoogleFonts.cairo(
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
-                                    color: primaryColor,
-                                    letterSpacing: 1.2,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  widget.config.splashSubtitle,
-                                  textDirection: TextDirection.rtl,
-                                  style: GoogleFonts.cairo(
-                                    fontSize: 16,
-                                    color: primaryColor.withOpacity(0.75),
-                                  ),
-                                ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Loading indicator at bottom
-                  Positioned(
-                    bottom: 60,
-                    left: 0,
-                    right: 0,
-                    child: AnimatedBuilder(
-                      animation: _textController,
-                      builder: (context, child) {
-                        return FadeTransition(
-                          opacity: _textOpacity,
-                          child: child,
-                        );
-                      },
-                      child: Center(
-                        child: SizedBox(
-                          width: 36,
-                          height: 36,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              primaryColor.withOpacity(0.6),
-                            ),
+                          child: const Icon(
+                            Icons.shopping_basket_rounded,
+                            size: 80,
+                            color: Colors.white,
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
+                    );
+                  },
+                ),
+              ],
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildLogo(Color primaryColor) {
-    final imageUrl = widget.config.splashImageUrl;
-    if (imageUrl.isNotEmpty) {
-      return Container(
-        width: 160,
-        height: 160,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: primaryColor.withOpacity(0.2),
-              blurRadius: 30,
-              spreadRadius: 5,
+            const SizedBox(height: 40),
+            
+            // النص: طمطوم للفواكه والخضروات
+            AnimatedBuilder(
+              animation: _textController,
+              builder: (context, child) {
+                return Opacity(
+                  opacity: _textOpacity.value,
+                  child: Column(
+                    children: [
+                      const Text(
+                        'طمطوم',
+                        style: TextStyle(
+                          fontSize: 42,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      const Text(
+                        'للفواكه والخضروات',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ],
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: CachedNetworkImage(
-            imageUrl: imageUrl,
-            fit: BoxFit.cover,
-            placeholder: (context, url) => _defaultLogo(primaryColor),
-            errorWidget: (context, url, error) => _defaultLogo(primaryColor),
-          ),
-        ),
-      );
-    }
-    return _defaultLogo(primaryColor);
-  }
-
-  Widget _defaultLogo(Color primaryColor) {
-    return Container(
-      width: 160,
-      height: 160,
-      decoration: BoxDecoration(
-        color: primaryColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: primaryColor.withOpacity(0.3),
-            blurRadius: 30,
-            spreadRadius: 5,
-          ),
-        ],
-      ),
-      child: const Center(
-        child: Text(
-          '🛒',
-          style: TextStyle(fontSize: 72),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDecorativeCircle(double size, Color color) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
       ),
     );
   }
